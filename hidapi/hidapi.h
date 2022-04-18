@@ -91,7 +91,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-		struct hid_api_version {
+		struct __attribute__((__packed__)) hid_api_version {
 			int major;
 			int minor;
 			int patch;
@@ -101,7 +101,7 @@ extern "C" {
 		typedef struct hid_device_ hid_device; /**< opaque hidapi structure */
 
 		/** hidapi info structure */
-		struct hid_device_info {
+		struct __attribute__((__packed__))  hid_device_info {
 			/** Platform-specific device path */
 			char *path;
 			/** Device Vendor ID */
