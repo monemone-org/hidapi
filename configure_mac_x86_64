@@ -1,0 +1,4 @@
+#! /bin/bash
+
+./configure  --host=x86_64-apple-darwin21.4.0
+

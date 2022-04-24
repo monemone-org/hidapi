@@ -173,6 +173,8 @@ extern "C" {
 			attached to the system which match vendor_id and product_id.
 			If @p vendor_id is set to 0 then any vendor matches.
 			If @p product_id is set to 0 then any product matches.
+			If @p usage_page is set to 0 then any usage page matches.
+			If @p usage is set to 0 then any usage matches.
 			If @p vendor_id and @p product_id are both set to 0, then
 			all HID devices will be returned.
 
@@ -188,7 +190,14 @@ extern "C" {
 		    	attached to the system, or NULL in the case of failure. Free
 		    	this linked list by calling hid_free_enumeration().
 		*/
-		struct hid_device_info HID_API_EXPORT * HID_API_CALL hid_enumerate(unsigned short vendor_id, unsigned short product_id);
+        struct hid_device_info HID_API_EXPORT * HID_API_CALL hid_enumerate(
+                                                                           unsigned short vendor_id,
+                                                                           unsigned short product_id);
+        struct hid_device_info HID_API_EXPORT * HID_API_CALL hid_enumerate_ex(
+                                                                           unsigned short vendor_id,
+                                                                           unsigned short product_id,
+                                                                           unsigned short usage_page,
+                                                                           unsigned short usage);
 
 		/** @brief Free an enumeration Linked List
 
@@ -513,6 +522,21 @@ extern "C" {
 				Pointer to statically allocated string, that contains version string.
 		*/
 		HID_API_EXPORT const char* HID_API_CALL hid_version_str(void);
+
+
+        /** @brief notify when a matching device is connected.
+
+            @ingroup API
+
+            @returns
+                Pointer to statically allocated string, that contains version string.
+        */
+        int HID_API_EXPORT HID_API_CALL hid_add_device_notification(unsigned short vendor_id,
+                                                                    unsigned short product_id,
+                                                                    unsigned short usage_page,
+                                                                    unsigned short usage,
+                                                                    void (*on_added_device)(struct hid_device_info *));
+
 
 #ifdef __cplusplus
 }

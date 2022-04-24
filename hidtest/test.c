@@ -80,7 +80,7 @@ int main(int argc, char* argv[])
 		printf("  Product:      %ls\n", cur_dev->product_string);
 		printf("  Release:      %hx\n", cur_dev->release_number);
 		printf("  Interface:    %d\n",  cur_dev->interface_number);
-		printf("  Usage (page): 0x%hx (0x%hx)\n", cur_dev->usage, cur_dev->usage_page);
+		printf("  Usage (page): 0x%04hx (0x%04hx)\n", cur_dev->usage, cur_dev->usage_page);
 		printf("\n");
 		cur_dev = cur_dev->next;
 	}
@@ -98,6 +98,7 @@ int main(int argc, char* argv[])
 	handle = hid_open(0x4d8, 0x3f, NULL);
 	if (!handle) {
 		printf("unable to open device\n");
+        hid_exit();
  		return 1;
 	}
 
