@@ -161,6 +161,8 @@ int HID_API_EXPORT hid_exit(void)
         CFRelease(hid_notif_mgr);
         hid_notif_mgr = NULL;
     }
+    
+    the_on_added_device = NULL;
 
     if (hid_daemon_thread_object)
     {
@@ -908,17 +910,15 @@ int HID_API_EXPORT HID_API_CALL hid_add_device_notification(unsigned short vendo
         hid_notif_mgr = init_hid_manager();
         if (hid_main_mgr == NULL)
             goto return_error;
+
+        IOHIDManagerRegisterDeviceMatchingCallback(hid_notif_mgr, matchingCallback, hid_notif_mgr);
+        //IOHIDManagerRegisterDeviceRemovalCallback(hid_notif_mgr, removalCallback, hid_notif_mgr);
     }
+    
+    the_on_added_device = on_added_device;
 
     hid_mgr_set_matching(hid_notif_mgr, vendor_id, product_id, usage_page, usage);
 
-    IOHIDManagerOpen(hid_notif_mgr, kIOHIDOptionsTypeNone);
-
-    IOHIDManagerRegisterDeviceMatchingCallback(hid_notif_mgr, matchingCallback, hid_notif_mgr);
-    //IOHIDManagerRegisterDeviceRemovalCallback(hid_notif_mgr, removalCallback, hid_notif_mgr);
-
-	the_on_added_device = on_added_device;
-    
     return 0;
     
 return_error:

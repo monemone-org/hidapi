@@ -117,7 +117,7 @@ int main(int argc, char* argv[])
 	buf[0] = 0x01;
 	buf[1] = 0x81;
 
-        //wait for 5 sec, if still not connected, then quit the app
+    //wait for 5 sec, if still not connected, then quit the app
     for (int i=0; i<15 && !found_monenumpad; ++i)
     {
         printf("waiting for device to be connected...\n");
@@ -130,13 +130,13 @@ int main(int argc, char* argv[])
 #endif
     }
     
+    
     if (!found_monenumpad)
     {
         printf("tired of waiting for device to be connected.\n");
         hid_exit();
         return 1;
     }
-
 
 	// Open the device using the VID, PID,
 	// and optionally the Serial number.
