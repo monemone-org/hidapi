@@ -15,6 +15,7 @@ typedef struct thread_object_ {
 	pthread_mutex_t mutex;
 
 	//run under thread's context
+    void (* on_thread_starting)(struct thread_object_ *);
 	void (* on_thread_exiting)(struct thread_object_ *);
 
 } thread_object;
@@ -31,6 +32,7 @@ static thread_object* init_thread_object() {
     thread_obj->source = NULL;
 
     thread_obj->shutdown_thread = 0;
+    thread_obj->on_thread_starting = NULL;
     thread_obj->on_thread_exiting = NULL;
 
 	pthread_barrier_init(&thread_obj->barrier, NULL, 2);
@@ -49,7 +51,8 @@ static void free_thread_object(thread_object *thread_obj)
 	   free() and others do. */
 	if (thread_obj->run_loop_mode)
 		CFRelease(thread_obj->run_loop_mode);
-	if (thread_obj->source)
+
+    if (thread_obj->source)
 		CFRelease(thread_obj->source);
 
 	/* Clean up the thread objects */
@@ -72,7 +75,7 @@ static void start_thread_object(thread_object *thread_obj)
 	sprintf(str, "HIDAPI_%p", (void*) thread_obj);
     thread_obj->run_loop_mode =
 		CFStringCreateWithCString(NULL, str, kCFStringEncodingASCII);
-
+    
 	/* Start the read thread */
 	pthread_create(&thread_obj->thread, NULL, read_thread, thread_obj);
 
@@ -125,17 +128,22 @@ static void *read_thread(void *param)
 
 	/* Store off the Run Loop so it can be stopped from hid_close(). */
     thread_obj->run_loop = CFRunLoopGetCurrent();
+    
+    if (thread_obj->on_thread_starting)
+    {
+        thread_obj->on_thread_starting(thread_obj);
+    }
 
 	/* Notify the main thread that the read thread is up and running. */
 	pthread_barrier_wait(&thread_obj->barrier);
-
+    
 	/* Run the Event Loop. CFRunLoopRunInMode() will dispatch HID input
 	   reports into the hid_report_callback(). */
 	while (!thread_obj->shutdown_thread) {
 		code = CFRunLoopRunInMode(thread_obj->run_loop_mode, 1000/*sec*/, FALSE);
 		/* Return if the device has been disconnected */
 		if (code == kCFRunLoopRunFinished) {
-			//TODO: 
+			//TODO:
 			//dev->disconnected = 1;
 			break;
 		}

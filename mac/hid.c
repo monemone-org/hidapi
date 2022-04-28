@@ -73,9 +73,15 @@ static on_added_device_func *the_on_added_device = NULL;
 
 #include "hid_device.c"
 
+static void hid_daemon_thread_object_starting(thread_object *thread_object);
 static void hid_daemon_thread_object_exiting(thread_object *thread_object);
 static void matchingCallback(void *context, IOReturn result, void *sender, IOHIDDeviceRef device);
     //static void removalCallback(void *context, IOReturn result, void *sender, IOHIDDeviceRef device);
+static void hid_mgr_set_matching(IOHIDManagerRef hid_mgr,
+                                 unsigned short vendor_id,
+                                 unsigned short product_id,
+                                 unsigned short usage_page,
+                                 unsigned short usage);
 
 
 /* Initialize the IOHIDManager. Return 0 for success and -1 for failure. */
@@ -115,6 +121,7 @@ int HID_API_EXPORT hid_init(void)
         if (hid_daemon_thread_object == NULL)
             goto return_error;
         
+        hid_daemon_thread_object->on_thread_starting = &hid_daemon_thread_object_starting;
         hid_daemon_thread_object->on_thread_exiting = &hid_daemon_thread_object_exiting;
         start_thread_object(hid_daemon_thread_object);
     }
@@ -126,15 +133,6 @@ int HID_API_EXPORT hid_init(void)
         if (hid_main_mgr == NULL)
             goto return_error;
     }
-
-    if (!hid_notif_mgr) {
-        hid_notif_mgr = init_hid_manager();
-        if (hid_main_mgr == NULL)
-            goto return_error;
-        //IOHIDManagerOpen(hid_notif_mgr, IOOptionBits(kIOHIDOptionsTypeNone));
-        IOHIDManagerRegisterDeviceMatchingCallback(hid_notif_mgr, matchingCallback, hid_notif_mgr);
-        //IOHIDManagerRegisterDeviceRemovalCallback(hid_notif_mgr, removalCallback, hid_notif_mgr);
-	}
 
 	/* Already initialized. */
 	return 0;
@@ -157,9 +155,9 @@ int HID_API_EXPORT hid_exit(void)
 
     if (hid_notif_mgr) {
         /* Close the HID manager. */
-        IOHIDManagerClose(hid_notif_mgr, kIOHIDOptionsTypeNone);
         IOHIDManagerRegisterDeviceMatchingCallback(hid_notif_mgr, NULL, hid_notif_mgr);
         //IOHIDManagerRegisterDeviceRemovalCallback(hid_notif_mgr, NULL, hid_notif_mgr);
+        IOHIDManagerClose(hid_notif_mgr, kIOHIDOptionsTypeNone);
         CFRelease(hid_notif_mgr);
         hid_notif_mgr = NULL;
     }
@@ -172,6 +170,10 @@ int HID_API_EXPORT hid_exit(void)
 	}
 
 	return 0;
+}
+
+static void hid_daemon_thread_object_starting(thread_object *thread_object)
+{
 }
 
 static void hid_daemon_thread_object_exiting(thread_object *thread_object)
@@ -881,9 +883,9 @@ static void matchingCallback(void *context, IOReturn result, void *sender, IOHID
 	if (the_on_added_device != NULL)
 	{
 		the_on_added_device(dev);
+        free_hid_device_info(dev);
 	}
 }
-
 
 /** @brief register to get notified when a the HID Device is added/removed.
 	
@@ -902,10 +904,24 @@ int HID_API_EXPORT HID_API_CALL hid_add_device_notification(unsigned short vendo
                                                             unsigned short usage,
                                                             void (*on_added_device)(struct hid_device_info *))
 {
-	hid_mgr_set_matching(hid_notif_mgr, vendor_id, product_id, usage_page, usage);
+    if (!hid_notif_mgr) {
+        hid_notif_mgr = init_hid_manager();
+        if (hid_main_mgr == NULL)
+            goto return_error;
+    }
+
+    hid_mgr_set_matching(hid_notif_mgr, vendor_id, product_id, usage_page, usage);
+
+    IOHIDManagerOpen(hid_notif_mgr, kIOHIDOptionsTypeNone);
+
+    IOHIDManagerRegisterDeviceMatchingCallback(hid_notif_mgr, matchingCallback, hid_notif_mgr);
+    //IOHIDManagerRegisterDeviceRemovalCallback(hid_notif_mgr, removalCallback, hid_notif_mgr);
 
 	the_on_added_device = on_added_device;
     
     return 0;
+    
+return_error:
+    return -1;
 }
 

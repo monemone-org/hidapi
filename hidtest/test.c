@@ -40,6 +40,26 @@
 #include <hidapi_darwin.h>
 #endif
 
+
+#if defined(__APPLE__) && defined(__MACH__)
+#define MACOSX
+#include <CoreFoundation/CoreFoundation.h>
+#endif
+
+#define MONENUMPAD_VENDOR_ID    0x05ac
+#define MONENUMPAD_PRODUCT_ID   0x029c
+#define MONENUMPAD_USAGE_PAGE   0xFF60
+#define MONENUMPAD_USAGE        0x61
+
+
+static volatile int found_monenumpad = 0;
+
+static void on_added_device(struct hid_device_info *dev)
+{
+    printf("on_added_device()\n");
+    found_monenumpad = 1;
+}
+
 int main(int argc, char* argv[])
 {
 	(void)argc;
@@ -66,38 +86,79 @@ int main(int argc, char* argv[])
 		return -1;
 
 #if defined(__APPLE__) && HID_API_VERSION >= HID_API_MAKE_VERSION(0, 12, 0)
-	// To work properly needs to be called before hid_open/hid_open_path after hid_init.
-	// Best/recommended option - call it right after hid_init.
-	hid_darwin_set_open_exclusive(0);
+    // To work properly needs to be called before hid_open/hid_open_path after hid_init.
+    // Best/recommended option - call it right after hid_init.
+    hid_darwin_set_open_exclusive(0);
 #endif
 
-	devs = hid_enumerate(0x0, 0x0);
-	cur_dev = devs;
-	while (cur_dev) {
-		printf("Device Found\n  type: %04hx %04hx\n  path: %s\n  serial_number: %ls", cur_dev->vendor_id, cur_dev->product_id, cur_dev->path, cur_dev->serial_number);
-		printf("\n");
-		printf("  Manufacturer: %ls\n", cur_dev->manufacturer_string);
-		printf("  Product:      %ls\n", cur_dev->product_string);
-		printf("  Release:      %hx\n", cur_dev->release_number);
-		printf("  Interface:    %d\n",  cur_dev->interface_number);
-		printf("  Usage (page): 0x%04hx (0x%04hx)\n", cur_dev->usage, cur_dev->usage_page);
-		printf("\n");
-		cur_dev = cur_dev->next;
-	}
-	hid_free_enumeration(devs);
+    res = hid_add_device_notification(MONENUMPAD_VENDOR_ID, MONENUMPAD_PRODUCT_ID, MONENUMPAD_USAGE_PAGE, MONENUMPAD_USAGE,
+                                on_added_device);
+    if (res < 0)
+        printf("hid_add_device_notification failed\n");
 
+//	devs = hid_enumerate_ex(MONENUMPAD_VENDOR_ID, MONENUMPAD_PRODUCT_ID, MONENUMPAD_USAGE_PAGE, MONENUMPAD_USAGE);
+//	cur_dev = devs;
+//	while (cur_dev) {
+//        found_monenumpad = 1;
+//		printf("Device Found\n  type: %04hx %04hx\n  path: %s\n  serial_number: %ls", cur_dev->vendor_id, cur_dev->product_id, cur_dev->path, cur_dev->serial_number);
+//		printf("\n");
+//		printf("  Manufacturer: %ls\n", cur_dev->manufacturer_string);
+//		printf("  Product:      %ls\n", cur_dev->product_string);
+//		printf("  Release:      %hx\n", cur_dev->release_number);
+//		printf("  Interface:    %d\n",  cur_dev->interface_number);
+//		printf("  Usage (page): 0x%04hx (0x%04hx)\n", cur_dev->usage, cur_dev->usage_page);
+//		printf("\n");
+//		cur_dev = cur_dev->next;
+//	}
+//	hid_free_enumeration(devs);
+    
 	// Set up the command buffer.
 	memset(buf,0x00,sizeof(buf));
 	buf[0] = 0x01;
 	buf[1] = 0x81;
 
+        //wait for 5 sec, if still not connected, then quit the app
+    for (int i=0; i<15 && !found_monenumpad; ++i)
+    {
+        printf("waiting for device to be connected...\n");
+#ifdef _WIN32
+        Sleep(500);
+#elif defined(MACOSX)
+        CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.5/*sec*/, FALSE);
+#else
+        usleep(500*1000);
+#endif
+    }
+    
+    if (!found_monenumpad)
+    {
+        printf("tired of waiting for device to be connected.\n");
+        hid_exit();
+        return 1;
+    }
+
 
 	// Open the device using the VID, PID,
 	// and optionally the Serial number.
 	////handle = hid_open(0x4d8, 0x3f, L"12345");
-	handle = hid_open(0x4d8, 0x3f, NULL);
+	handle = hid_open(MONENUMPAD_VENDOR_ID, MONENUMPAD_PRODUCT_ID, NULL);
 	if (!handle) {
 		printf("unable to open device\n");
+        
+        //wait for 5 sec, if still not connected, then quit the app
+        while (res == 0) {
+            res = hid_read(handle, buf, sizeof(buf));
+            if (res == 0)
+                printf("waiting...\n");
+            if (res < 0)
+                printf("Unable to read()\n");
+            #ifdef _WIN32
+            Sleep(500);
+            #else
+            usleep(500*1000);
+            #endif
+        }
+
         hid_exit();
  		return 1;
 	}
