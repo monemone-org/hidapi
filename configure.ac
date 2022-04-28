@@ -75,6 +75,8 @@ case $host in
 	os="darwin"
 	threads="pthreads"
 	LIBS="${LIBS} -framework IOKit -framework CoreFoundation -framework AppKit"
+	CFLAGS="${CFLAGS} -arch x86_64 -arch arm64"
+	CXXFLAGS="${CXXFLAGS} -arch x86_64 -arch arm64"
 	;;
 *-freebsd*)
 	AC_MSG_RESULT([ (FreeBSD back-end)])

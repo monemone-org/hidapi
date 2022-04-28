@@ -1,4 +1,8 @@
 #! /bin/bash
 
-./configure  --host=x86_64-apple-darwin21.4.0
+#./configure CFLAGS= --host=x86_64-apple-darwin
+#./configure   --host=x86_64-apple-darwin21.4.0
+#./configure  --target=x86_64-apple-darwin21.4.0
+./configure CFLAGS="-arch x86_64 -arch arm64" CXXFLAGS="-arch x86_64 -arch arm64"
+
 
