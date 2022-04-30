@@ -111,7 +111,7 @@ int main(int argc, char* argv[])
 //		cur_dev = cur_dev->next;
 //	}
 //	hid_free_enumeration(devs);
-    
+
 	// Set up the command buffer.
 	memset(buf,0x00,sizeof(buf));
 	buf[0] = 0x01;

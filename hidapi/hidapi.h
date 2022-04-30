@@ -197,7 +197,8 @@ extern "C" {
                                                                            unsigned short vendor_id,
                                                                            unsigned short product_id,
                                                                            unsigned short usage_page,
-                                                                           unsigned short usage);
+                                                                           unsigned short usage,
+                                                                           void (*on_added_device)(struct hid_device_info *));
 
 		/** @brief Free an enumeration Linked List
 
@@ -523,19 +524,6 @@ extern "C" {
 		*/
 		HID_API_EXPORT const char* HID_API_CALL hid_version_str(void);
 
-
-        /** @brief notify when a matching device is connected.
-
-            @ingroup API
-
-            @returns
-                Pointer to statically allocated string, that contains version string.
-        */
-        int HID_API_EXPORT HID_API_CALL hid_add_device_notification(unsigned short vendor_id,
-                                                                    unsigned short product_id,
-                                                                    unsigned short usage_page,
-                                                                    unsigned short usage,
-                                                                    void (*on_added_device)(struct hid_device_info *));
 
 
 #ifdef __cplusplus

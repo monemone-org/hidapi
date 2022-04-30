@@ -64,8 +64,7 @@ static    int is_macos_10_10_or_greater = 0;
 static  IOOptionBits device_open_options = 0;
 
 static  thread_object        *hid_daemon_thread_object  = NULL;
-static  IOHIDManagerRef       hid_main_mgr = 0x0;
-static  IOHIDManagerRef       hid_notif_mgr = 0x0;
+static	IOHIDManagerRef       hid_main_mgr = 0x0;
 static  hid_device_list_node *hid_device_list = NULL;
 
 typedef void (on_added_device_func)(struct hid_device_info *);
@@ -109,6 +108,18 @@ HID_API_EXPORT const char* HID_API_CALL hid_version_str()
 	return HID_API_VERSION_STR;
 }
 
+static void matchingCallback(void *context, IOReturn result, void *sender, IOHIDDeviceRef device)
+{
+    struct hid_device_info *dev = create_device_info(device);
+    if (the_on_added_device != NULL)
+    {
+        the_on_added_device(dev);
+        free_hid_device_info(dev);
+    }
+}
+
+
+
 /* Initialize the IOHIDManager if necessary. This is the public function, and
    it is safe to call this function repeatedly. Return 0 for success and -1
    for failure. */
@@ -148,20 +159,12 @@ int HID_API_EXPORT hid_exit(void)
 {
 	if (hid_main_mgr) {
 		/* Close the HID manager. */
+        IOHIDManagerRegisterDeviceMatchingCallback(hid_main_mgr, NULL, hid_main_mgr);
 		IOHIDManagerClose(hid_main_mgr, kIOHIDOptionsTypeNone);
 		CFRelease(hid_main_mgr);
         hid_main_mgr = NULL;
     }
 
-    if (hid_notif_mgr) {
-        /* Close the HID manager. */
-        IOHIDManagerRegisterDeviceMatchingCallback(hid_notif_mgr, NULL, hid_notif_mgr);
-        //IOHIDManagerRegisterDeviceRemovalCallback(hid_notif_mgr, NULL, hid_notif_mgr);
-        IOHIDManagerClose(hid_notif_mgr, kIOHIDOptionsTypeNone);
-        CFRelease(hid_notif_mgr);
-        hid_notif_mgr = NULL;
-    }
-    
     the_on_added_device = NULL;
 
     if (hid_daemon_thread_object)
@@ -256,14 +259,15 @@ static void hid_mgr_set_matching(IOHIDManagerRef hid_mgr,
 struct hid_device_info  HID_API_EXPORT *hid_enumerate(unsigned short vendor_id,
                                                        unsigned short product_id)
 {
-    return hid_enumerate_ex(vendor_id, product_id, 0, 0);
+    return hid_enumerate_ex(vendor_id, product_id, 0, 0, NULL);
 }
 
 
 struct hid_device_info  HID_API_EXPORT *hid_enumerate_ex(unsigned short vendor_id,
-	                                                   unsigned short product_id,
-	                                                   unsigned short usage_page,
-	                                                   unsigned short usage)
+	                                                     unsigned short product_id,
+	                                                     unsigned short usage_page,
+	                                                     unsigned short usage,
+                                                         void (*on_added_device)(struct hid_device_info *))
 {
 	struct hid_device_info *root = NULL; /* return object */
 	struct hid_device_info *cur_dev = NULL;
@@ -274,10 +278,21 @@ struct hid_device_info  HID_API_EXPORT *hid_enumerate_ex(unsigned short vendor_i
 	if (hid_init() < 0)
 		return NULL;
 
-	/* give the IOHIDManager a chance to update itself */
+    /* give the IOHIDManager a chance to update itself */
 	//process_pending_events();
 
-	hid_mgr_set_matching(hid_main_mgr, vendor_id, product_id, usage_page, usage);
+    // stop receiving matching callback so we can safely update the_on_added_device
+    IOHIDManagerRegisterDeviceMatchingCallback(hid_main_mgr, NULL, hid_main_mgr);
+
+    hid_mgr_set_matching(hid_main_mgr, vendor_id, product_id, usage_page, usage);
+
+    // update matching callback after set_matching, so we only get update callback
+    // after our enumerations
+    if (on_added_device != NULL)
+    {
+        the_on_added_device = on_added_device;
+        IOHIDManagerRegisterDeviceMatchingCallback(hid_main_mgr, matchingCallback, hid_main_mgr);
+    }
 
 	CFSetRef device_set = IOHIDManagerCopyDevices(hid_main_mgr);
 	if (device_set == NULL) {
@@ -878,50 +893,4 @@ HID_API_EXPORT const wchar_t * HID_API_CALL  hid_error(hid_device *dev)
 
 
 
-
-static void matchingCallback(void *context, IOReturn result, void *sender, IOHIDDeviceRef device)
-{
-	struct hid_device_info *dev = create_device_info(device);
-	if (the_on_added_device != NULL)
-	{
-		the_on_added_device(dev);
-        free_hid_device_info(dev);
-	}
-}
-
-/** @brief register to get notified when a the HID Device is added/removed.
-	
-	If @p vendor_id is set to 0 then any vendor matches.
-	If @p product_id is set to 0 then any product matches.
-	If @p usage_page is set to 0 then any usage page matches.
-	If @p usage is set to 0 then any usage matches.
-	If @p vendor_id and @p product_id are both set to 0, then
-
-	return 0 if succeeds
-        -1 if fails
- */
-int HID_API_EXPORT HID_API_CALL hid_add_device_notification(unsigned short vendor_id,
-                                                            unsigned short product_id,
-                                                            unsigned short usage_page,
-                                                            unsigned short usage,
-                                                            void (*on_added_device)(struct hid_device_info *))
-{
-    if (!hid_notif_mgr) {
-        hid_notif_mgr = init_hid_manager();
-        if (hid_main_mgr == NULL)
-            goto return_error;
-
-        IOHIDManagerRegisterDeviceMatchingCallback(hid_notif_mgr, matchingCallback, hid_notif_mgr);
-        //IOHIDManagerRegisterDeviceRemovalCallback(hid_notif_mgr, removalCallback, hid_notif_mgr);
-    }
-    
-    the_on_added_device = on_added_device;
-
-    hid_mgr_set_matching(hid_notif_mgr, vendor_id, product_id, usage_page, usage);
-
-    return 0;
-    
-return_error:
-    return -1;
-}
 
