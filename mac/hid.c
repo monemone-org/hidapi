@@ -420,6 +420,18 @@ static void hid_report_callback(void *context, IOReturn result, void *sender,
 	rpt->len = report_length;
 	rpt->next = NULL;
 
+    // get dev->on_read safely
+    void (*the_on_read)(unsigned char *, size_t) = NULL;
+    pthread_mutex_lock(&dev->mutex);
+    the_on_read = dev->on_read;
+    pthread_mutex_unlock(&dev->mutex);
+    
+    if (the_on_read != NULL)
+    {
+        the_on_read(rpt->data, rpt->len);
+        return;
+    }
+    
 	/* Lock this section */
 	pthread_mutex_lock(&dev->mutex);
 
@@ -602,12 +614,14 @@ static int set_report(hid_device *dev, IOHIDReportType type, const unsigned char
 	unsigned char report_id;
 
 	if (!data || (length == 0)) {
+        printf("IOHIDDeviceSetReport - return -1 because if (!data || (length == 0))\n");
 		return -1;
 	}
 
 	report_id = data[0];
 
 	if (report_id == 0x0) {
+        printf("IOHIDDeviceSetReport - report_id == 0x0\n");
 		/* Not using numbered Reports.
 		   Don't send the report number. */
 		data_to_send = data+1;
@@ -616,6 +630,7 @@ static int set_report(hid_device *dev, IOHIDReportType type, const unsigned char
 
 	/* Avoid crash if the device has been unplugged. */
 	if (dev->disconnected) {
+        printf("IOHIDDeviceSetReport - return -1 because if dev->disconnected\n");
 		return -1;
 	}
 
@@ -623,6 +638,7 @@ static int set_report(hid_device *dev, IOHIDReportType type, const unsigned char
 	                           type,
 	                           report_id,
 	                           data_to_send, length_to_send);
+    //printf("IOHIDDeviceSetReport - res = %d\n", (int)res);
 
 	if (res == kIOReturnSuccess) {
 		return (int) length;
@@ -804,6 +820,24 @@ int HID_API_EXPORT hid_read(hid_device *dev, unsigned char *data, size_t length)
 	return hid_read_timeout(dev, data, length, (dev->blocking)? -1: 0);
 }
 
+
+int HID_API_EXPORT hid_register_read_callback(hid_device *dev, void (*on_read)(unsigned char *, size_t))
+{
+    pthread_mutex_lock(&dev->mutex);
+    dev->on_read = on_read;
+    pthread_mutex_unlock(&dev->mutex);
+    return 0;
+}
+
+void HID_API_EXPORT hid_unregister_read_callback(hid_device *dev)
+{
+    pthread_mutex_lock(&dev->mutex);
+    dev->on_read = NULL;
+    pthread_mutex_unlock(&dev->mutex);
+    return;
+}
+
+
 int HID_API_EXPORT hid_set_nonblocking(hid_device *dev, int nonblock)
 {
 	/* All Nonblocking operation is handled by the library. */
@@ -852,6 +886,11 @@ int HID_API_EXPORT_CALL hid_get_indexed_string(hid_device *dev, int string_index
 	/* TODO: */
 
 	return 0;
+}
+
+int HID_API_EXPORT_CALL hid_get_max_report_length(hid_device *dev)
+{
+    return get_max_report_length(dev->device_handle);
 }
 
 int HID_API_EXPORT_CALL hid_darwin_get_location_id(hid_device *dev, uint32_t *location_id)

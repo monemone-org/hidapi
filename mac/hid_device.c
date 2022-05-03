@@ -13,7 +13,8 @@ struct hid_device_ {
 
 	pthread_mutex_t mutex; /* Protects input_reports */
 	pthread_cond_t condition;
-
+    
+    void (*on_read)(unsigned char *, size_t);
 };
 
 static hid_device *new_hid_device(void)

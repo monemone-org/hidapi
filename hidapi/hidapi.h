@@ -132,7 +132,7 @@ extern "C" {
 				* Valid on the Mac implementation if and only if the device
 				  is a USB HID device. */
 			int interface_number;
-
+            
 			/** Pointer to the next device */
 			struct hid_device_info *next;
 		};
@@ -199,6 +199,7 @@ extern "C" {
                                                                            unsigned short usage_page,
                                                                            unsigned short usage,
                                                                            void (*on_added_device)(struct hid_device_info *));
+
 
 		/** @brief Free an enumeration Linked List
 
@@ -321,6 +322,21 @@ extern "C" {
 				the handle is in non-blocking mode, this function returns 0.
 		*/
 		int  HID_API_EXPORT HID_API_CALL hid_read(hid_device *dev, unsigned char *data, size_t length);
+
+        /** @brief Setup read callback when an Input report is read from a HID device.
+            After read callback is registered, hid_read() will return no data.
+
+            @ingroup API
+            @param dev A device handle returned from hid_open().
+            @param on_read A  pointer to the callback function
+
+            @returns
+                This function returns 0 if successful and
+                -1 on error.
+        */
+        int HID_API_EXPORT HID_API_CALL hid_register_read_callback(hid_device *dev, void (*on_read)(unsigned char *, size_t));
+        void HID_API_EXPORT HID_API_CALL hid_unregister_read_callback(hid_device *dev);
+
 
 		/** @brief Set the device handle to be non-blocking.
 
@@ -483,6 +499,8 @@ extern "C" {
 				This function returns 0 on success and -1 on error.
 		*/
 		int HID_API_EXPORT_CALL hid_get_indexed_string(hid_device *dev, int string_index, wchar_t *string, size_t maxlen);
+
+        int HID_API_EXPORT_CALL hid_get_max_report_length(hid_device *dev);
 
 		/** @brief Get a string describing the last error which occurred.
 
