@@ -143,8 +143,6 @@ static void *read_thread(void *param)
 		code = CFRunLoopRunInMode(thread_obj->run_loop_mode, 1000/*sec*/, FALSE);
 		/* Return if the device has been disconnected */
 		if (code == kCFRunLoopRunFinished) {
-			//TODO:
-			//dev->disconnected = 1;
 			break;
 		}
 

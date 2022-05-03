@@ -14,7 +14,8 @@ struct hid_device_ {
 	pthread_mutex_t mutex; /* Protects input_reports */
 	pthread_cond_t condition;
     
-    void (*on_read)(unsigned char *, size_t);
+    void (*on_read)(hid_device *, unsigned char *, size_t);
+    void (*on_disconnected)(hid_device *);
 };
 
 static hid_device *new_hid_device(void)

@@ -91,26 +91,26 @@ int main(int argc, char* argv[])
     hid_darwin_set_open_exclusive(0);
 #endif
 
-    res = hid_add_device_notification(MONENUMPAD_VENDOR_ID, MONENUMPAD_PRODUCT_ID, MONENUMPAD_USAGE_PAGE, MONENUMPAD_USAGE,
-                                on_added_device);
-    if (res < 0)
-        printf("hid_add_device_notification failed\n");
+//    res = hid_add_device_notification(MONENUMPAD_VENDOR_ID, MONENUMPAD_PRODUCT_ID, MONENUMPAD_USAGE_PAGE, MONENUMPAD_USAGE,
+//                                on_added_device);
+//    if (res < 0)
+//        printf("hid_add_device_notification failed\n");
 
-//	devs = hid_enumerate_ex(MONENUMPAD_VENDOR_ID, MONENUMPAD_PRODUCT_ID, MONENUMPAD_USAGE_PAGE, MONENUMPAD_USAGE);
-//	cur_dev = devs;
-//	while (cur_dev) {
-//        found_monenumpad = 1;
-//		printf("Device Found\n  type: %04hx %04hx\n  path: %s\n  serial_number: %ls", cur_dev->vendor_id, cur_dev->product_id, cur_dev->path, cur_dev->serial_number);
-//		printf("\n");
-//		printf("  Manufacturer: %ls\n", cur_dev->manufacturer_string);
-//		printf("  Product:      %ls\n", cur_dev->product_string);
-//		printf("  Release:      %hx\n", cur_dev->release_number);
-//		printf("  Interface:    %d\n",  cur_dev->interface_number);
-//		printf("  Usage (page): 0x%04hx (0x%04hx)\n", cur_dev->usage, cur_dev->usage_page);
-//		printf("\n");
-//		cur_dev = cur_dev->next;
-//	}
-//	hid_free_enumeration(devs);
+	devs = hid_enumerate_ex(MONENUMPAD_VENDOR_ID, MONENUMPAD_PRODUCT_ID, MONENUMPAD_USAGE_PAGE, MONENUMPAD_USAGE, on_added_device);
+	cur_dev = devs;
+	while (cur_dev) {
+        found_monenumpad = 1;
+		printf("Device Found\n  type: %04hx %04hx\n  path: %s\n  serial_number: %ls", cur_dev->vendor_id, cur_dev->product_id, cur_dev->path, cur_dev->serial_number);
+		printf("\n");
+		printf("  Manufacturer: %ls\n", cur_dev->manufacturer_string);
+		printf("  Product:      %ls\n", cur_dev->product_string);
+		printf("  Release:      %hx\n", cur_dev->release_number);
+		printf("  Interface:    %d\n",  cur_dev->interface_number);
+		printf("  Usage (page): 0x%04hx (0x%04hx)\n", cur_dev->usage, cur_dev->usage_page);
+		printf("\n");
+		cur_dev = cur_dev->next;
+	}
+	hid_free_enumeration(devs);
 
 	// Set up the command buffer.
 	memset(buf,0x00,sizeof(buf));

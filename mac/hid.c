@@ -67,8 +67,9 @@ static  thread_object        *hid_daemon_thread_object  = NULL;
 static	IOHIDManagerRef       hid_main_mgr = 0x0;
 static  hid_device_list_node *hid_device_list = NULL;
 
-typedef void (on_added_device_func)(struct hid_device_info *);
-static on_added_device_func *the_on_added_device = NULL;
+//typedef void (on_added_device_func)(struct hid_device_info *);
+//static on_added_device_func *the_on_added_device = NULL;
+static void (*the_on_added_device)(struct hid_device_info *) = NULL;
 
 #include "hid_device.c"
 
@@ -395,7 +396,18 @@ static void hid_device_removal_callback(void *context, IOReturn result,
 	hid_device *d = (hid_device*) context;
 
 	d->disconnected = 1;
-	//CFRunLoopStop(d->run_loop);
+	    
+    // get dev->on_disconnected safely
+    void (*the_on_disconnected)(hid_device *) = NULL;
+    pthread_mutex_lock(&d->mutex);
+    the_on_disconnected = d->on_disconnected;
+    pthread_mutex_unlock(&d->mutex);
+
+    if (the_on_disconnected != NULL)
+    {
+        the_on_disconnected(d);
+    }
+    
 }
 
 /* The Run Loop calls this function for each input report received.
@@ -421,14 +433,14 @@ static void hid_report_callback(void *context, IOReturn result, void *sender,
 	rpt->next = NULL;
 
     // get dev->on_read safely
-    void (*the_on_read)(unsigned char *, size_t) = NULL;
+    void (*the_on_read)(hid_device *, unsigned char *, size_t) = NULL;
     pthread_mutex_lock(&dev->mutex);
     the_on_read = dev->on_read;
     pthread_mutex_unlock(&dev->mutex);
     
     if (the_on_read != NULL)
     {
-        the_on_read(rpt->data, rpt->len);
+        the_on_read(dev, rpt->data, rpt->len);
         return;
     }
     
@@ -484,12 +496,12 @@ static io_registry_entry_t hid_open_service_registry_from_path(const char *path)
 		char *endptr;
 		uint64_t entry_id = strtoull(path + 10, &endptr, 10);
 		if (*endptr == '\0') {
-			return IOServiceGetMatchingService(NULL, IORegistryEntryIDMatching(entry_id));
+			return IOServiceGetMatchingService(kIOMainPortDefault, IORegistryEntryIDMatching(entry_id));
 		}
 	}
 	else {
 		/* Fallback to older format of the path */
-		return IORegistryEntryFromPath(NULL, path);
+		return IORegistryEntryFromPath(kIOMainPortDefault, path);
 	}
 
 	return MACH_PORT_NULL;
@@ -821,7 +833,7 @@ int HID_API_EXPORT hid_read(hid_device *dev, unsigned char *data, size_t length)
 }
 
 
-int HID_API_EXPORT hid_register_read_callback(hid_device *dev, void (*on_read)(unsigned char *, size_t))
+int HID_API_EXPORT hid_register_read_callback(hid_device *dev, void (*on_read)(hid_device *, unsigned char *, size_t))
 {
     pthread_mutex_lock(&dev->mutex);
     dev->on_read = on_read;
@@ -837,6 +849,21 @@ void HID_API_EXPORT hid_unregister_read_callback(hid_device *dev)
     return;
 }
 
+int HID_API_EXPORT hid_register_disconnected_callback(hid_device *dev, void (*on_disconnected)(hid_device *))
+{
+    pthread_mutex_lock(&dev->mutex);
+    dev->on_disconnected = on_disconnected;
+    pthread_mutex_unlock(&dev->mutex);
+    return 0;
+}
+
+void HID_API_EXPORT hid_unregister_disconnected_callback(hid_device *dev)
+{
+    pthread_mutex_lock(&dev->mutex);
+    dev->on_disconnected = NULL;
+    pthread_mutex_unlock(&dev->mutex);
+    return;
+}
 
 int HID_API_EXPORT hid_set_nonblocking(hid_device *dev, int nonblock)
 {
