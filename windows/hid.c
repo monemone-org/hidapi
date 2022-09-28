@@ -20,6 +20,8 @@
         https://github.com/libusb/hidapi .
 ********************************************************/
 
+#define HID_READ_CALLBACK
+
 #if defined(_MSC_VER) && !defined(_CRT_SECURE_NO_WARNINGS)
 /* Do not warn about wcsncpy usage.
    https://docs.microsoft.com/cpp/c-runtime-library/security-features-in-the-crt */
@@ -170,6 +172,10 @@ err:
 
 #endif /* HIDAPI_USE_DDK */
 
+
+typedef void (*on_read_callback)(hid_device *, unsigned char *, size_t);
+typedef void (*on_disconnected_callback)(hid_device *, unsigned char *, size_t);
+
 struct hid_device_ {
 		HANDLE device_handle;
 		BOOL blocking;
@@ -183,6 +189,11 @@ struct hid_device_ {
 		char *read_buf;
 		OVERLAPPED ol;
 		OVERLAPPED write_ol;
+
+		CRITICAL_SECTION cs; //to protect the access of on_read and on_disconnected
+		on_read_callback on_read;
+		on_disconnected_callback on_disconnected;
+
 		struct hid_device_info* device_info;
 };
 
@@ -203,6 +214,9 @@ static hid_device *new_hid_device()
 	dev->ol.hEvent = CreateEvent(NULL, FALSE, FALSE /*initial state f=nonsignaled*/, NULL);
 	memset(&dev->write_ol, 0, sizeof(dev->write_ol));
 	dev->write_ol.hEvent = CreateEvent(NULL, FALSE, FALSE /*inital state f=nonsignaled*/, NULL);
+	InitializeCriticalSection(&dev->cs);
+	dev->on_read = NULL;
+	dev->on_disconnected = NULL:
 	dev->device_info = NULL;
 
 	return dev;
@@ -221,6 +235,43 @@ static void free_hid_device(hid_device *dev)
 	hid_free_enumeration(dev->device_info);
 	free(dev);
 }
+
+static on_read_callback hid_device_get_on_read(hid_device *dev)
+{
+	on_read_callback ret = NULL;
+
+	EnterCriticalSection( &dev->cs );
+    ret = dev->on_read;
+	LeaseCriticalSection( &dev->cs );
+
+	return ret;
+}
+
+static void hid_device_set_on_read(hid_device *dev, on_read_callback on_read)
+{
+	EnterCriticalSection( &dev->cs );
+    dev->on_read = on_read;
+	LeaseCriticalSection( &dev->cs );
+}
+
+static on_disconnected_callback hid_device_get_on_disconnect(hid_device *dev)
+{
+	on_disconnected_callback ret = NULL;
+
+	EnterCriticalSection( &dev->cs );
+    ret = dev->on_disconnected;
+	LeaseCriticalSection( &dev->cs );
+
+	return ret;
+}
+
+static void hid_device_set_on_disconnected(hid_device *dev, on_disconnected_callback on_disconnected)
+{
+	EnterCriticalSection( &dev->cs );
+    dev->on_disconnected = on_disconnected;
+	LeaseCriticalSection( &dev->cs );
+}
+
 
 static void register_winapi_error_to_buffer(wchar_t **error_buffer, const WCHAR *op)
 {
@@ -321,7 +372,11 @@ static HANDLE open_device(const wchar_t *path, BOOL open_rw)
 		share_mode,
 		NULL,
 		OPEN_EXISTING,
+#ifdef HID_READ_CALLBACK
+		FILE_ATTRIBUTE_NORMAL
+#else
 		FILE_FLAG_OVERLAPPED,/*FILE_ATTRIBUTE_NORMAL,*/
+#endif
 		0);
 
 	return handle;
@@ -601,6 +656,15 @@ static struct hid_device_info *hid_internal_get_device_info(const wchar_t *path,
 
 struct hid_device_info HID_API_EXPORT * HID_API_CALL hid_enumerate(unsigned short vendor_id, unsigned short product_id)
 {
+    return hid_enumerate_ex(vendor_id, product_id, 0, 0, NULL);
+}
+
+struct hid_device_info HID_API_EXPORT * HID_API_CALL hid_enumerate_ex(unsigned short vendor_id,
+                                                                      unsigned short product_id,
+                                                                      unsigned short usage_page,
+                                                                      unsigned short usage,
+                                                                      void (*on_added_device)(struct hid_device_info *))
+{
 	struct hid_device_info *root = NULL; /* return object */
 	struct hid_device_info *cur_dev = NULL;
 	GUID interface_class_guid;
@@ -615,6 +679,28 @@ struct hid_device_info HID_API_EXPORT * HID_API_CALL hid_enumerate(unsigned shor
 	   https://docs.microsoft.com/windows-hardware/drivers/install/guid-devinterface-hid */
 	HidD_GetHidGuid(&interface_class_guid);
 
+
+	/* Register notification */
+    DEV_BROADCAST_DEVICEINTERFACE NotificationFilter;
+
+    ZeroMemory(&NotificationFilter, sizeof(NotificationFilter));
+    NotificationFilter.dbcc_size = sizeof(DEV_BROADCAST_DEVICEINTERFACE);
+    NotificationFilter.dbcc_devicetype = DBT_DEVTYP_DEVICEINTERFACE;
+    NotificationFilter.dbcc_classguid = interface_class_guid;
+
+    *hDeviceNotify = RegisterDeviceNotification(
+        hWnd,                       // events recipient
+        &NotificationFilter,        // type of device
+        DEVICE_NOTIFY_WINDOW_HANDLE // type of recipient handle
+    );
+
+    if (NULL == *hDeviceNotify)
+    {
+        ErrorHandler(L"RegisterDeviceNotification");
+        return FALSE;
+    }
+
+
 	/* Get the list of all device interfaces belonging to the HID class. */
 	/* Retry in case of list was changed between calls to
 	  CM_Get_Device_Interface_List_SizeW and CM_Get_Device_Interface_ListW */
@@ -624,9 +710,9 @@ struct hid_device_info HID_API_EXPORT * HID_API_CALL hid_enumerate(unsigned shor
 			break;
 		}
 
-		if (device_interface_list != NULL) {
-			free(device_interface_list);
-		}
+//		if (device_interface_list != NULL) {
+//			free(device_interface_list);
+//		}
 
 		device_interface_list = (wchar_t*)calloc(len, sizeof(wchar_t));
 		if (device_interface_list == NULL) {
@@ -666,6 +752,12 @@ struct hid_device_info HID_API_EXPORT * HID_API_CALL hid_enumerate(unsigned shor
 
 			/* VID/PID match. Create the record. */
 			struct hid_device_info *tmp = hid_internal_get_device_info(device_interface, device_handle);
+            
+            if ((usage_page == 0x0 || dev->usage_page = caps.UsagePage) &&
+                (usage == 0x0 || dev->usage = caps.Usage))
+            {
+                
+            }
 
 			if (tmp == NULL) {
 				goto cont_close;
@@ -1207,6 +1299,34 @@ HID_API_EXPORT const wchar_t * HID_API_CALL  hid_error(hid_device *dev)
 	return L"hid_error for global errors is not implemented yet";
 }
 
+
+int HID_API_EXPORT HID_API_CALL hid_register_read_callback(hid_device *dev, void (*on_read)(hid_device *, unsigned char *, size_t))
+{
+	hid_device_set_on_read(dev, on_read);
+    return 0;
+}
+
+void HID_API_EXPORT HID_API_CALL hid_unregister_read_callback(hid_device *dev)
+{
+	hid_device_set_on_read(dev, NULL);
+}
+
+int HID_API_EXPORT hid_register_disconnected_callback(hid_device *dev, void (*on_disconnected)(hid_device *))
+{
+	hid_device_set_on_disconnected(dev, on_disconnected);
+    return 0;
+}
+    
+void HID_API_EXPORT hid_unregister_disconnected_callback(hid_device *dev)
+{
+	hid_device_set_on_disconnected(dev, NULL);
+}
+
+
+#ifdef  HID_READ_CALLBACK
+
+#endif    
+    
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
