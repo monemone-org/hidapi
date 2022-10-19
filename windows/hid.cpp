@@ -282,6 +282,9 @@ int HID_API_EXPORT hid_init(void)
 		hidapi_initialized = TRUE;
 	}
 #endif
+
+	SetMainWindowThread();
+
 	return 0;
 }
 

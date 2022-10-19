@@ -2,7 +2,27 @@
 #include "hid_internal.h"
 #include "HidD_proxy.h"
 #include "hidapi_hidsdi.h"
+#include <assert.h>
 
+static DWORD g_MainWindowThreadID = 0;
+
+bool IsMainWindowThread() {
+	return g_MainWindowThreadID == GetCurrentThreadId();
+}
+
+void SetMainWindowThread() {
+	g_MainWindowThreadID = GetCurrentThreadId();
+}
+
+void AssertMainWindowThread()
+{
+#ifdef DEBUG
+	if (!IsMainWindowThread())
+	{
+		assert(false);
+	}
+#endif
+}
 
 /*
     * return null if fails to create hid_device_info*

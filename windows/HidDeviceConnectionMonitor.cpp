@@ -56,6 +56,8 @@ BOOL HidDeviceConnectionMonitor::IsInitialized() {
 // clean up all the global variables.  Should be called on the main thread.
 void HidDeviceConnectionMonitor::Uninitialize()
 {
+    AssertMainWindowThread();
+
     m_bInitialized = FALSE;
 
     for (auto iter = m_devIdToAsyncReadThreadMap.begin(); iter != m_devIdToAsyncReadThreadMap.end(); ++iter)
@@ -91,6 +93,8 @@ void HidDeviceConnectionMonitor::Uninitialize()
 
 BOOL HidDeviceConnectionMonitor::Initialize()
 {
+    AssertMainWindowThread();
+
     if (IsInitialized()) {
         return TRUE;
     }
@@ -131,6 +135,8 @@ BOOL HidDeviceConnectionMonitor::Initialize()
 
 void HidDeviceConnectionMonitor::RegisterWindowClass(PCWSTR pszClassName)
 {
+    AssertMainWindowThread();
+
     WNDCLASSEX wcex = { sizeof(wcex) };
     wcex.style = CS_HREDRAW | CS_VREDRAW;
     wcex.lpfnWndProc = WndProc;
@@ -145,6 +151,8 @@ void HidDeviceConnectionMonitor::RegisterWindowClass(PCWSTR pszClassName)
 
 LRESULT HidDeviceConnectionMonitor::MonitorWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+    AssertMainWindowThread();
+
     switch (message)
     {
     case WM_CREATE:
@@ -230,6 +238,8 @@ LRESULT HidDeviceConnectionMonitor::MonitorWndProc(HWND hwnd, UINT message, WPAR
 */
 void HidDeviceConnectionMonitor::OnDBTDeviceArrival(wchar_t* device_interface_name)
 {
+    AssertMainWindowThread();
+
     if (m_pHidEnumOnAddDeviceNotify)
     {
         struct hid_device_info* dev_info = create_hid_device_info_from_device_interface_name(device_interface_name,
@@ -255,6 +265,8 @@ void HidDeviceConnectionMonitor::OnDBTDeviceArrival(wchar_t* device_interface_na
 */
 void HidDeviceConnectionMonitor::OnDBTDeviceRemoveComplete(wchar_t* device_interface_name)
 {
+    AssertMainWindowThread();
+
     // on_disconnect should only be accessed through the caller app's main thread 
     // because HidDeviceConnectionMonitor uses WndProc to notify on device disconnection
     //
@@ -276,6 +288,8 @@ void HidDeviceConnectionMonitor::StartMonitoringNewDevices(
     unsigned short if_match_usage,
     void (*on_added_device)(struct hid_device_info*))
 {
+    AssertMainWindowThread();
+
     if (m_pHidEnumOnAddDeviceNotify == NULL)
     {
         m_pHidEnumOnAddDeviceNotify = (HidEnumOnAddDeviceNotify*)calloc(1, sizeof(HidEnumOnAddDeviceNotify));
@@ -295,18 +309,22 @@ void HidDeviceConnectionMonitor::StartMonitoringNewDevices(
 
 BOOL HidDeviceConnectionMonitor::StartMonitoringDisconnectionForDevice(hid_device* dev)
 {
+    AssertMainWindowThread();
     m_monitoringDisconnectionDeviceList.push_back(dev);
     return TRUE;
 }
 
 void HidDeviceConnectionMonitor::StopMonitoringDisconnectionForDevice(hid_device* dev)
 {
+    AssertMainWindowThread();
     m_monitoringDisconnectionDeviceList.remove(dev);
 }
 
 
 hid_device* HidDeviceConnectionMonitor::FindMonitoringDisconnectionDeviceByDeviceInterfaceName(wchar_t* device_interface_name)
 {
+    AssertMainWindowThread();
+
     if (device_interface_name == NULL)
     {
         return NULL;
@@ -341,6 +359,8 @@ hid_device* HidDeviceConnectionMonitor::FindMonitoringDisconnectionDeviceByDevic
 
 BOOL HidDeviceConnectionMonitor::StartMonitoringOnReadForDevice(hid_device* dev)
 {
+    AssertMainWindowThread();
+
     std::wstring devId = dev->id;
 
     if (this->m_devIdToAsyncReadThreadMap.find(devId) == this->m_devIdToAsyncReadThreadMap.end())
@@ -363,6 +383,8 @@ BOOL HidDeviceConnectionMonitor::StartMonitoringOnReadForDevice(hid_device* dev)
 
 void HidDeviceConnectionMonitor::StopMonitoringOnReadForDevice(hid_device* dev)
 {
+    AssertMainWindowThread();
+
     std::wstring devID = dev->id;
     auto threadIter = this->m_devIdToAsyncReadThreadMap.find(devID);
     if (threadIter != this->m_devIdToAsyncReadThreadMap.end())
@@ -376,6 +398,8 @@ void HidDeviceConnectionMonitor::StopMonitoringOnReadForDevice(hid_device* dev)
 
 HidDeviceAsyncReadThread* HidDeviceConnectionMonitor::FindMonitoringAsyncReadThreadByDeviceID(wchar_t* pszDevID)
 {
+    AssertMainWindowThread();
+
     std::wstring devID = pszDevID;
 
     auto threadIter = this->m_devIdToAsyncReadThreadMap.find(devID);
@@ -391,6 +415,8 @@ HidDeviceAsyncReadThread* HidDeviceConnectionMonitor::FindMonitoringAsyncReadThr
 
 
 //IHidDeviceAsyncReadThreadMonitor
+
+// this method should be called from background read threads.
 void HidDeviceConnectionMonitor::OnDataRead(const std::wstring& devID)
 {
     WCHAR* pszDevID = _wcsdup(devID.c_str());

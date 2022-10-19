@@ -2,13 +2,12 @@
 
 #include "hidapi.h"
 #include <windows.h>
-//#include <WinUser.h>
-//#include <initguid.h>
-//#include <dbt.h>
-//#include <usbiodef.h>
 
 
 // hid_internal functions.
+bool IsMainWindowThread();
+void SetMainWindowThread();
+void AssertMainWindowThread();
 
 typedef void (*on_read_callback)(hid_device*, unsigned char*, size_t);
 typedef void (*on_disconnected_callback)(hid_device*);

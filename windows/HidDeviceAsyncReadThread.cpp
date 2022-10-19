@@ -27,6 +27,8 @@ DWORD  CALLBACK ThreadProc(_In_ LPVOID lpParameter)
 // clean up all the global variables.  Should be called on the main thread.
 void HidDeviceAsyncReadThread::Stop(BOOL bWait)
 {
+    AssertMainWindowThread();
+
     if (m_hReadMonitoringThread)
     {
         if (m_hReadMonitoringThreadExitEvent)
@@ -68,6 +70,8 @@ void HidDeviceAsyncReadThread::Stop(BOOL bWait)
 
 BOOL HidDeviceAsyncReadThread::Start()
 {
+    AssertMainWindowThread();
+
     if (GetReadMonitoringThreadState() == threadState_Running) {
         return TRUE;
     }
@@ -92,6 +96,8 @@ BOOL HidDeviceAsyncReadThread::Start()
 
 BOOL HidDeviceAsyncReadThread::CreatReadMonitoringThread()
 {
+    AssertMainWindowThread();
+
     m_hReadMonitoringThreadExitEvent = CreateEventW(NULL, TRUE, FALSE, NULL);
     if (m_hReadMonitoringThreadExitEvent == NULL)
     {
@@ -118,14 +124,23 @@ BOOL HidDeviceAsyncReadThread::CreatReadMonitoringThread()
 
 void HidDeviceAsyncReadThread::FreeAllReadData()
 {
-    for (auto iterReadData = m_readDataList.begin();
-        iterReadData != m_readDataList.end();
+    AssertMainWindowThread();
+
+    std::list<ReadDataRecord*> listCopy;
+
+    {
+        CSLock lock(m_cs);
+        listCopy = m_readDataList;
+        m_readDataList.clear();
+    }
+
+    for (auto iterReadData = listCopy.begin();
+        iterReadData != listCopy.end();
         ++iterReadData)
     {
         ReadDataRecord* pReadData = *iterReadData;
         delete pReadData;
     }
-    m_readDataList.clear();
 
 }
 
@@ -140,8 +155,13 @@ BOOL HidDeviceAsyncReadThread::PushReadData(unsigned char* data, size_t cbData)
     pReadData->data = data;
     pReadData->cbData = cbData;
     
-    CSLock lock(m_cs);
-    m_readDataList.push_back(pReadData);
+    {
+        CSLock lock(m_cs);
+        if (GetReadMonitoringThreadState() == threadState_Running)
+        {
+            m_readDataList.push_back(pReadData);
+        }
+    }
     return TRUE;
 }
 
@@ -150,6 +170,8 @@ BOOL HidDeviceAsyncReadThread::PushReadData(unsigned char* data, size_t cbData)
 */
 BOOL HidDeviceAsyncReadThread::PopReadData(__out unsigned char** pData, __out size_t* pcbData)
 {
+    AssertMainWindowThread();
+
     *pData = NULL;
     *pcbData = 0;
 
