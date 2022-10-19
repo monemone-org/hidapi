@@ -65,7 +65,7 @@ int main(int argc, char* argv[])
 	(void)argc;
 	(void)argv;
 
-	int res;
+	int res = 0;
 	unsigned char buf[256];
 	#define MAX_STR 255
 	wchar_t wstr[MAX_STR];

@@ -22,12 +22,18 @@
 
 #ifdef HIDAPI_USE_DDK
 
+#include <Windows.h>
+#include <stdint.h>
 #include <cfgmgr32.h>
 #include <initguid.h>
 #include <devpkey.h>
 #include <propkey.h>
 
 #else
+
+#include <devpropdef.h>
+
+
 
 /* This part of the header mimics cfgmgr32.h,
     but only what is used by HIDAPI */
@@ -37,6 +43,7 @@ typedef RETURN_TYPE CONFIGRET;
 typedef DWORD DEVNODE, DEVINST;
 typedef DEVNODE* PDEVNODE, * PDEVINST;
 typedef WCHAR* DEVNODEID_W, * DEVINSTID_W;
+
 
 #define CR_SUCCESS (0x00000000)
 #define CR_BUFFER_SMALL (0x0000001A)

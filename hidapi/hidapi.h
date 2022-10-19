@@ -91,7 +91,18 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-		struct __attribute__((__packed__)) hid_api_version {
+
+
+
+#if defined(_MSC_VER)
+#define STRUCT_ATTR_PACKED 
+#pragma pack(push, 1)
+#else
+#define STRUCT_ATTR_PACKED			__attribute__((__packed__))
+#endif
+
+
+		struct STRUCT_ATTR_PACKED hid_api_version {
 			int major;
 			int minor;
 			int patch;
@@ -101,7 +112,7 @@ extern "C" {
 		typedef struct hid_device_ hid_device; /**< opaque hidapi structure */
 
 		/** hidapi info structure */
-		struct __attribute__((__packed__))  hid_device_info {
+		struct STRUCT_ATTR_PACKED hid_device_info {
 			/** Platform-specific device path */
 			char *path;
 			/** Device Vendor ID */
@@ -136,7 +147,9 @@ extern "C" {
 			/** Pointer to the next device */
 			struct hid_device_info *next;
 		};
-
+#if defined(_MSC_VER)
+#pragma pack(pop)
+#endif
 
 		/** @brief Initialize the HIDAPI library.
 

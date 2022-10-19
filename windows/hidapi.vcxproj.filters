@@ -15,13 +15,61 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="hid.c">
+    <ClCompile Include="hid.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HidDeviceConnectionMonitor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HidD_proxy.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hid_internal.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HidDeviceAsyncReadThread.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="HidDeviceConnectionMonitor.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="hid_internal.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HidD_proxy.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="hidapi_cfgmgr32.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="hidapi_hidclass.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="hidapi_hidpi.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="hidapi_hidsdi.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="hidapi_winapi.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="stdafx.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="IN_CS_block.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\hidapi\hidapi.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HidDeviceAsyncReadThread.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
