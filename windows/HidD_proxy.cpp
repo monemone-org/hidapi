@@ -7,26 +7,26 @@
    In lookup_functions(), the function pointers
    defined below are set. */
 
-//HidD_GetHidGuid_ HidD_GetHidGuid;
-//HidD_GetAttributes_ HidD_GetAttributes;
-//HidD_GetSerialNumberString_ HidD_GetSerialNumberString;
-//HidD_GetManufacturerString_ HidD_GetManufacturerString;
-//HidD_GetProductString_ HidD_GetProductString;
-//HidD_SetFeature_ HidD_SetFeature;
-//HidD_GetFeature_ HidD_GetFeature;
-//HidD_GetInputReport_ HidD_GetInputReport;
-//HidD_GetIndexedString_ HidD_GetIndexedString;
-//HidD_GetPreparsedData_ HidD_GetPreparsedData;
-//HidD_FreePreparsedData_ HidD_FreePreparsedData;
-//HidP_GetCaps_ HidP_GetCaps;
-//HidD_SetNumInputBuffers_ HidD_SetNumInputBuffers;
-//
-//CM_Locate_DevNodeW_ CM_Locate_DevNodeW = NULL;
-//CM_Get_Parent_ CM_Get_Parent = NULL;
-//CM_Get_DevNode_PropertyW_ CM_Get_DevNode_PropertyW = NULL;
-//CM_Get_Device_Interface_PropertyW_ CM_Get_Device_Interface_PropertyW = NULL;
-//CM_Get_Device_Interface_List_SizeW_ CM_Get_Device_Interface_List_SizeW = NULL;
-//CM_Get_Device_Interface_ListW_ CM_Get_Device_Interface_ListW = NULL;
+HidD_GetHidGuid_ HidD_GetHidGuid;
+HidD_GetAttributes_ HidD_GetAttributes;
+HidD_GetSerialNumberString_ HidD_GetSerialNumberString;
+HidD_GetManufacturerString_ HidD_GetManufacturerString;
+HidD_GetProductString_ HidD_GetProductString;
+HidD_SetFeature_ HidD_SetFeature;
+HidD_GetFeature_ HidD_GetFeature;
+HidD_GetInputReport_ HidD_GetInputReport;
+HidD_GetIndexedString_ HidD_GetIndexedString;
+HidD_GetPreparsedData_ HidD_GetPreparsedData;
+HidD_FreePreparsedData_ HidD_FreePreparsedData;
+HidP_GetCaps_ HidP_GetCaps;
+HidD_SetNumInputBuffers_ HidD_SetNumInputBuffers;
+
+CM_Locate_DevNodeW_ CM_Locate_DevNodeW = NULL;
+CM_Get_Parent_ CM_Get_Parent = NULL;
+CM_Get_DevNode_PropertyW_ CM_Get_DevNode_PropertyW = NULL;
+CM_Get_Device_Interface_PropertyW_ CM_Get_Device_Interface_PropertyW = NULL;
+CM_Get_Device_Interface_List_SizeW_ CM_Get_Device_Interface_List_SizeW = NULL;
+CM_Get_Device_Interface_ListW_ CM_Get_Device_Interface_ListW = NULL;
 
 static HMODULE hid_lib_handle = NULL;
 static HMODULE cfgmgr32_lib_handle = NULL;

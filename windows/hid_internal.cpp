@@ -6,6 +6,8 @@
 
 static DWORD g_MainWindowThreadID = 0;
 
+std::wstring g_last_error_str;
+
 bool IsMainWindowThread() {
 	return g_MainWindowThreadID == GetCurrentThreadId();
 }
@@ -279,5 +281,34 @@ void register_winapi_error_to_buffer(wchar_t** error_buffer, const WCHAR* op)
 		msg[msg_len - 1] = L'\0';
 		msg_len--;
 	}
+}
+
+
+bool non_null(const on_added_device_callback_entry& entry) 
+{ 
+	return entry.on_added_device != NULL; 
+}
+
+bool is_null(const on_added_device_callback_entry& entry) 
+{ 
+	return !non_null(entry); 
+}
+
+bool non_null(const on_read_callback_entry& entry) 
+{ 
+	return entry.on_read != NULL; 
+}
+bool is_null(const on_read_callback_entry& entry) 
+{ 
+	return !non_null(entry); 
+}
+
+bool non_null(const on_disconnected_callback_entry& entry) 
+{ 
+	return entry.on_disconnected != NULL; 
+}
+bool is_null(const on_disconnected_callback_entry& entry) 
+{ 
+	return !non_null(entry); 
 }
 

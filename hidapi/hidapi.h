@@ -102,117 +102,135 @@ extern "C" {
 #endif
 
 
-		struct STRUCT_ATTR_PACKED hid_api_version {
-			int major;
-			int minor;
-			int patch;
-		};
+	struct STRUCT_ATTR_PACKED hid_api_version {
+		int major;
+		int minor;
+		int patch;
+	};
 
-		struct hid_device_;
-		typedef struct hid_device_ hid_device; /**< opaque hidapi structure */
+	struct hid_device_;
+	typedef struct hid_device_ hid_device; /**< opaque hidapi structure */
 
-		/** hidapi info structure */
-		struct STRUCT_ATTR_PACKED hid_device_info {
-			/** Platform-specific device path */
-			char *path;
-			/** Device Vendor ID */
-			unsigned short vendor_id;
-			/** Device Product ID */
-			unsigned short product_id;
-			/** Serial Number */
-			wchar_t *serial_number;
-			/** Device Release Number in binary-coded decimal,
-			    also known as Device Version Number */
-			unsigned short release_number;
-			/** Manufacturer String */
-			wchar_t *manufacturer_string;
-			/** Product string */
-			wchar_t *product_string;
-			/** Usage Page for this Device/Interface
-			    (Windows/Mac/hidraw only) */
-			unsigned short usage_page;
-			/** Usage for this Device/Interface
-			    (Windows/Mac/hidraw only) */
-			unsigned short usage;
-			/** The USB interface which this logical device
-			    represents.
+	/** hidapi info structure */
+	struct STRUCT_ATTR_PACKED hid_device_info {
+		/** Platform-specific device path */
+		char* path;
+		/** Device Vendor ID */
+		unsigned short vendor_id;
+		/** Device Product ID */
+		unsigned short product_id;
+		/** Serial Number */
+		wchar_t* serial_number;
+		/** Device Release Number in binary-coded decimal,
+			also known as Device Version Number */
+		unsigned short release_number;
+		/** Manufacturer String */
+		wchar_t* manufacturer_string;
+		/** Product string */
+		wchar_t* product_string;
+		/** Usage Page for this Device/Interface
+			(Windows/Mac/hidraw only) */
+		unsigned short usage_page;
+		/** Usage for this Device/Interface
+			(Windows/Mac/hidraw only) */
+		unsigned short usage;
+		/** The USB interface which this logical device
+			represents.
 
-				* Valid on both Linux implementations in all cases.
-				* Valid on the Windows implementation only if the device
-				  contains more than one interface.
-				* Valid on the Mac implementation if and only if the device
-				  is a USB HID device. */
-			int interface_number;
-            
-			/** Pointer to the next device */
-			struct hid_device_info *next;
-		};
+			* Valid on both Linux implementations in all cases.
+			* Valid on the Windows implementation only if the device
+			  contains more than one interface.
+			* Valid on the Mac implementation if and only if the device
+			  is a USB HID device. */
+		int interface_number;
+
+		/** Pointer to the next device */
+		struct hid_device_info* next;
+	};
+
+	typedef struct on_added_device_callback_entry {
+		void (*on_added_device)(struct hid_device_info*, void* user_data);
+		void* user_data;
+	} on_added_device_callback_entry;
+
+	typedef struct on_read_callback_entry {
+		void* user_data;
+		void (*on_read)(hid_device*, unsigned char*, size_t, void* user_data);
+	} on_read_callback_entry;
+
+	typedef struct on_disconnected_callback_entry {
+		void* user_data;
+		void (*on_disconnected)(hid_device*, void* user_data);
+	} on_disconnected_callback_entry;
+
+
 #if defined(_MSC_VER)
 #pragma pack(pop)
 #endif
 
-		/** @brief Initialize the HIDAPI library.
+	/** @brief Initialize the HIDAPI library.
 
-			This function initializes the HIDAPI library. Calling it is not
-			strictly necessary, as it will be called automatically by
-			hid_enumerate() and any of the hid_open_*() functions if it is
-			needed.  This function should be called at the beginning of
-			execution however, if there is a chance of HIDAPI handles
-			being opened by different threads simultaneously.
+		This function initializes the HIDAPI library. Calling it is not
+		strictly necessary, as it will be called automatically by
+		hid_enumerate() and any of the hid_open_*() functions if it is
+		needed.  This function should be called at the beginning of
+		execution however, if there is a chance of HIDAPI handles
+		being opened by different threads simultaneously.
 
-			@ingroup API
+		@ingroup API
 
-			@returns
-				This function returns 0 on success and -1 on error.
-		*/
-		int HID_API_EXPORT HID_API_CALL hid_init(void);
+		@returns
+			This function returns 0 on success and -1 on error.
+	*/
+	int HID_API_EXPORT HID_API_CALL hid_init(void);
 
-		/** @brief Finalize the HIDAPI library.
+	/** @brief Finalize the HIDAPI library.
 
-			This function frees all of the static data associated with
-			HIDAPI. It should be called at the end of execution to avoid
-			memory leaks.
+		This function frees all of the static data associated with
+		HIDAPI. It should be called at the end of execution to avoid
+		memory leaks.
 
-			@ingroup API
+		@ingroup API
 
-		    @returns
-				This function returns 0 on success and -1 on error.
-		*/
-		int HID_API_EXPORT HID_API_CALL hid_exit(void);
+		@returns
+			This function returns 0 on success and -1 on error.
+	*/
+	int HID_API_EXPORT HID_API_CALL hid_exit(void);
 
-		/** @brief Enumerate the HID Devices.
+	/** @brief Enumerate the HID Devices.
 
-			This function returns a linked list of all the HID devices
-			attached to the system which match vendor_id and product_id.
-			If @p vendor_id is set to 0 then any vendor matches.
-			If @p product_id is set to 0 then any product matches.
-			If @p usage_page is set to 0 then any usage page matches.
-			If @p usage is set to 0 then any usage matches.
-			If @p vendor_id and @p product_id are both set to 0, then
-			all HID devices will be returned.
+		This function returns a linked list of all the HID devices
+		attached to the system which match vendor_id and product_id.
+		If @p vendor_id is set to 0 then any vendor matches.
+		If @p product_id is set to 0 then any product matches.
+		If @p usage_page is set to 0 then any usage page matches.
+		If @p usage is set to 0 then any usage matches.
+		If @p vendor_id and @p product_id are both set to 0, then
+		all HID devices will be returned.
 
-			@ingroup API
-			@param vendor_id The Vendor ID (VID) of the types of device
-				to open.
-			@param product_id The Product ID (PID) of the types of
-				device to open.
+		@ingroup API
+		@param vendor_id The Vendor ID (VID) of the types of device
+			to open.
+		@param product_id The Product ID (PID) of the types of
+			device to open.
 
-		    @returns
-		    	This function returns a pointer to a linked list of type
-		    	struct #hid_device_info, containing information about the HID devices
-		    	attached to the system, or NULL in the case of failure. Free
-		    	this linked list by calling hid_free_enumeration().
-		*/
-        struct hid_device_info HID_API_EXPORT * HID_API_CALL hid_enumerate(
-                                                                           unsigned short vendor_id,
-                                                                           unsigned short product_id);
-        struct hid_device_info HID_API_EXPORT * HID_API_CALL hid_enumerate_ex(
-                                                                           unsigned short vendor_id,
-                                                                           unsigned short product_id,
-                                                                           unsigned short usage_page,
-                                                                           unsigned short usage,
-                                                                           void (*on_added_device)(struct hid_device_info *));
+		@returns
+			This function returns a pointer to a linked list of type
+			struct #hid_device_info, containing information about the HID devices
+			attached to the system, or NULL in the case of failure. Free
+			this linked list by calling hid_free_enumeration().
+	*/
+	struct hid_device_info HID_API_EXPORT* HID_API_CALL hid_enumerate(
+		unsigned short vendor_id,
+		unsigned short product_id);
 
+    struct hid_device_info HID_API_EXPORT * HID_API_CALL hid_enumerate_ex(
+                                                                        unsigned short vendor_id,
+                                                                        unsigned short product_id,
+                                                                        unsigned short usage_page,
+                                                                        unsigned short usage,
+																		on_added_device_callback_entry on_added_device_callback);
+	void HID_API_EXPORT HID_API_CALL hid_stop_enumerate_on_added_device_callback();
 
 		/** @brief Free an enumeration Linked List
 
@@ -347,17 +365,9 @@ extern "C" {
                 This function returns 0 if successful and
                 -1 on error.
         */
-		typedef struct on_read_callback_entry {
-			void* user_data;
-			void (*on_read)(hid_device*, unsigned char*, size_t, void* user_data);
-		} on_read_callback_entry;
         int HID_API_EXPORT HID_API_CALL hid_register_read_callback(hid_device *dev, on_read_callback_entry on_read);
         void HID_API_EXPORT HID_API_CALL hid_unregister_read_callback(hid_device *dev);
 
-		typedef struct on_disconnected_callback_entry {
-			void* user_data;
-			void (*on_disconnected)(hid_device*, void* user_data);
-		} on_disconnected_callback_entry;
 		int HID_API_EXPORT hid_register_disconnected_callback(hid_device *dev, on_disconnected_callback_entry on_disconnected);
         void HID_API_EXPORT hid_unregister_disconnected_callback(hid_device *dev);
 

@@ -9,10 +9,6 @@ bool IsMainWindowThread();
 void SetMainWindowThread();
 void AssertMainWindowThread();
 
-typedef void (*on_read_callback)(hid_device*, unsigned char*, size_t);
-typedef void (*on_disconnected_callback)(hid_device*);
-
-class HidDeviceAsyncReadThread;
 
 struct hid_device_ {
 	WCHAR *id;
@@ -81,16 +77,19 @@ size_t hid_internal_dev_copy_read_buf(hid_device* dev, unsigned char* data, size
 // Return the description of Windows' GetLastError() 
 void register_winapi_error_to_buffer(wchar_t** error_buffer, const WCHAR* op);
 
-inline bool non_null(const on_read_callback_entry& entry) { return entry.on_read != NULL; }
-inline bool is_null(const on_read_callback_entry& entry) { return !non_null(entry); }
+bool non_null(const on_added_device_callback_entry& entry);
+bool is_null(const on_added_device_callback_entry& entry);
 
-inline bool non_null(const on_disconnected_callback_entry& entry) { return entry.on_disconnected != NULL; }
-inline bool is_null(const on_disconnected_callback_entry& entry) { return !non_null(entry); }
+bool non_null(const on_read_callback_entry& entry);
+bool is_null(const on_read_callback_entry& entry);
+
+bool non_null(const on_disconnected_callback_entry& entry);
+bool is_null(const on_disconnected_callback_entry& entry);
 
 
 #include <string>
 
-static std::wstring g_last_error_str;
+extern std::wstring g_last_error_str;
 
 inline
 void mone_set_global_error(const wchar_t* last_error_str)

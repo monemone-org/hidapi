@@ -43,7 +43,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
     HidDeviceConnectionMonitor* pMonitor = (HidDeviceConnectionMonitor*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
     if (pMonitor == NULL)
     {
-        return 0;
+        return DefWindowProc(hwnd, message, wParam, lParam);
     }
 
     return pMonitor->MonitorWndProc(hwnd, message, wParam, lParam);
@@ -61,6 +61,9 @@ void HidDeviceConnectionMonitor::Uninitialize()
 
     m_bInitialized = FALSE;
 
+    StopMonitoringNewDevices();
+
+    // stop monitoring for on_read
     for (auto iter = m_devIdToAsyncReadThreadMap.begin(); iter != m_devIdToAsyncReadThreadMap.end(); ++iter)
     {
         HidDeviceAsyncReadThread* pAsyncReadThread = iter->second;
@@ -69,19 +72,14 @@ void HidDeviceConnectionMonitor::Uninitialize()
     }
     m_devIdToAsyncReadThreadMap.clear();
 
+    // stop monitoring for on_disconnected
+    m_monitoringDisconnectionDeviceList.clear();
+
     if (m_hDeviceNotify)
     {
         UnregisterDeviceNotification(m_hDeviceNotify);
         m_hDeviceNotify = NULL;
     }
-
-    if (m_pHidEnumOnAddDeviceNotify)
-    {
-        free(m_pHidEnumOnAddDeviceNotify);
-        m_pHidEnumOnAddDeviceNotify = NULL;
-    }
-
-    m_monitoringDisconnectionDeviceList.clear();
 
     if (m_hwnd)
     {
@@ -124,6 +122,7 @@ BOOL HidDeviceConnectionMonitor::Initialize()
     );
     if (m_hDeviceNotify == NULL)
     {
+        SetLastError(L"RegisterDeviceNotificationW failed");
         return FALSE;
     }
 
@@ -251,14 +250,14 @@ void HidDeviceConnectionMonitor::OnDBTDeviceArrival(wchar_t* device_interface_na
             );
         if (dev_info)
         {
-            if (m_pHidEnumOnAddDeviceNotify->g_on_added_device)
+            if (non_null(m_pHidEnumOnAddDeviceNotify->on_added_device_callback))
             {
-                m_pHidEnumOnAddDeviceNotify->g_on_added_device(dev_info);
+                m_pHidEnumOnAddDeviceNotify->on_added_device_callback.on_added_device(dev_info, m_pHidEnumOnAddDeviceNotify->on_added_device_callback.user_data);
             }
             free(dev_info);
             dev_info = NULL;
         }
-    }
+    } // if (m_pHidEnumOnAddDeviceNotify)
 }
 
 /*
@@ -282,12 +281,13 @@ void HidDeviceConnectionMonitor::OnDBTDeviceRemoveComplete(wchar_t* device_inter
 }
 
 
-void HidDeviceConnectionMonitor::StartMonitoringNewDevices(
+
+BOOL HidDeviceConnectionMonitor::StartMonitoringNewDevices(
     unsigned short if_match_vendor_id,
     unsigned short if_match_product_id,
     unsigned short if_match_usage_page,
     unsigned short if_match_usage,
-    void (*on_added_device)(struct hid_device_info*))
+    on_added_device_callback_entry on_added_device_callback)
 {
     AssertMainWindowThread();
 
@@ -298,14 +298,26 @@ void HidDeviceConnectionMonitor::StartMonitoringNewDevices(
         {
             // out of memory
             SetLastError(L"calloc(1, sizeof(HidEnumOnAddDeviceNotify)) failed");
-            return;
+            return FALSE;
         }
     }
     m_pHidEnumOnAddDeviceNotify->if_match_vendor_id = if_match_vendor_id;
     m_pHidEnumOnAddDeviceNotify->if_match_product_id = if_match_product_id;
     m_pHidEnumOnAddDeviceNotify->if_match_usage_page = if_match_usage_page;
     m_pHidEnumOnAddDeviceNotify->if_match_usage = if_match_usage;
-        
+    m_pHidEnumOnAddDeviceNotify->on_added_device_callback = on_added_device_callback;
+    
+    return TRUE;
+}
+
+void HidDeviceConnectionMonitor::StopMonitoringNewDevices()
+{
+    if (m_pHidEnumOnAddDeviceNotify)
+    {
+        free(m_pHidEnumOnAddDeviceNotify);
+        m_pHidEnumOnAddDeviceNotify = NULL;
+    }
+
 }
 
 BOOL HidDeviceConnectionMonitor::StartMonitoringDisconnectionForDevice(hid_device* dev)
@@ -364,7 +376,7 @@ BOOL HidDeviceConnectionMonitor::StartMonitoringOnReadForDevice(hid_device* dev)
 
     std::wstring devId = dev->id;
 
-    if (this->m_devIdToAsyncReadThreadMap.find(devId) == this->m_devIdToAsyncReadThreadMap.end())
+    if (this->m_devIdToAsyncReadThreadMap.find(devId) != this->m_devIdToAsyncReadThreadMap.end())
     {
         this->SetLastError(L"HidDeviceAsyncReadThread already created for hid_device.");
         return FALSE;

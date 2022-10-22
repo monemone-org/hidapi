@@ -26,7 +26,7 @@ protected:
         unsigned short if_match_product_id;
         unsigned short if_match_usage_page;
         unsigned short if_match_usage;
-        void (*g_on_added_device)(struct hid_device_info*);
+        on_added_device_callback_entry on_added_device_callback;
     } HidEnumOnAddDeviceNotify;
     HidEnumOnAddDeviceNotify* m_pHidEnumOnAddDeviceNotify;
     std::list<hid_device*> m_monitoringDisconnectionDeviceList;
@@ -54,12 +54,13 @@ public:
     BOOL IsInitialized();
     void Uninitialize();
 
-    void StartMonitoringNewDevices(
+    BOOL StartMonitoringNewDevices(
         unsigned short if_match_vendor_id,
         unsigned short if_match_product_id,
         unsigned short if_match_usage_page,
         unsigned short if_match_usage,
-        void (*on_added_device)(struct hid_device_info*));
+        on_added_device_callback_entry on_added_device_callback);
+    void StopMonitoringNewDevices();
 
     // hid_c needs to notify HidDeviceConnectionMonitor when a 
     // hid_device is opened/closed, so when it receives DBT_DEVICEREMOVECOMPLETE,

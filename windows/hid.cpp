@@ -81,6 +81,8 @@ static struct hid_api_version api_version = {
 
 static BOOLEAN hidapi_initialized = FALSE;
 
+HINSTANCE g_hinstDLL = NULL;
+
 static HidDeviceConnectionMonitor g_DeviceMonitor;
 
 static hid_device *new_hid_device()
@@ -280,6 +282,8 @@ int HID_API_EXPORT hid_init(void)
 
 	SetMainWindowThread();
 
+	g_DeviceMonitor.Initialize();
+
 	return 0;
 }
 
@@ -289,6 +293,9 @@ int HID_API_EXPORT hid_exit(void)
 	free_library_handles();
 	hidapi_initialized = FALSE;
 #endif
+
+	g_DeviceMonitor.Uninitialize();
+
 	return 0;
 }
 
@@ -540,14 +547,20 @@ struct hid_device_info *hid_internal_get_device_info(const wchar_t *path, HANDLE
 
 struct hid_device_info HID_API_EXPORT * HID_API_CALL hid_enumerate(unsigned short vendor_id, unsigned short product_id)
 {
-    return hid_enumerate_ex(vendor_id, product_id, 0, 0, NULL);
+	on_added_device_callback_entry null_entry = { 0 };
+    return hid_enumerate_ex(vendor_id, product_id, 0, 0, null_entry);
+}
+
+void HID_API_EXPORT HID_API_CALL hid_stop_enumerate_on_added_device_callback()
+{
+	g_DeviceMonitor.StopMonitoringNewDevices();
 }
 
 struct hid_device_info HID_API_EXPORT * HID_API_CALL hid_enumerate_ex(unsigned short vendor_id,
                                                                       unsigned short product_id,
                                                                       unsigned short usage_page,
                                                                       unsigned short usage,
-                                                                      void (*on_added_device)(struct hid_device_info *))
+																	  on_added_device_callback_entry on_added_device_callback)
 {
 	struct hid_device_info *root = NULL; /* return object */
 	struct hid_device_info *cur_dev = NULL;
@@ -563,10 +576,18 @@ struct hid_device_info HID_API_EXPORT * HID_API_CALL hid_enumerate_ex(unsigned s
 	   https://docs.microsoft.com/windows-hardware/drivers/install/guid-devinterface-hid */
 	HidD_GetHidGuid(&interface_class_guid);
 
-	if (on_added_device != NULL)
+	if (non_null(on_added_device_callback))
 	{
-		//Mone: create temp top level HWND to listen to new devices
-
+		g_DeviceMonitor.StartMonitoringNewDevices(
+			vendor_id,
+			product_id,
+			usage_page,
+			usage,
+			on_added_device_callback);
+	}
+	else
+	{
+		g_DeviceMonitor.StopMonitoringNewDevices();
 	}
 
 	/* Get the list of all device interfaces belonging to the HID class. */

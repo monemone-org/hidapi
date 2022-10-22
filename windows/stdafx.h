@@ -7,4 +7,4 @@
 #include <Windows.h>
 #include "IN_CS_block.h"
 
-static HINSTANCE g_hinstDLL;
+extern HINSTANCE g_hinstDLL;
