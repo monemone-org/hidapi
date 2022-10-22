@@ -347,11 +347,20 @@ extern "C" {
                 This function returns 0 if successful and
                 -1 on error.
         */
-        int HID_API_EXPORT HID_API_CALL hid_register_read_callback(hid_device *dev, void (*on_read)(hid_device *, unsigned char *, size_t));
+		typedef struct on_read_callback_entry {
+			void* user_data;
+			void (*on_read)(hid_device*, unsigned char*, size_t, void* user_data);
+		} on_read_callback_entry;
+        int HID_API_EXPORT HID_API_CALL hid_register_read_callback(hid_device *dev, on_read_callback_entry on_read);
         void HID_API_EXPORT HID_API_CALL hid_unregister_read_callback(hid_device *dev);
 
-        int HID_API_EXPORT hid_register_disconnected_callback(hid_device *dev, void (*on_disconnected)(hid_device *));
+		typedef struct on_disconnected_callback_entry {
+			void* user_data;
+			void (*on_disconnected)(hid_device*, void* user_data);
+		} on_disconnected_callback_entry;
+		int HID_API_EXPORT hid_register_disconnected_callback(hid_device *dev, on_disconnected_callback_entry on_disconnected);
         void HID_API_EXPORT hid_unregister_disconnected_callback(hid_device *dev);
+
 
 
 		/** @brief Set the device handle to be non-blocking.

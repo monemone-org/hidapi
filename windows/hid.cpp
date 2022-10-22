@@ -133,8 +133,8 @@ static hid_device *new_hid_device()
 		register_winapi_error(NULL, L"CreateEvent");
 		return NULL;
 	}
-	dev->on_read = NULL;
-	dev->on_disconnected = NULL;
+	dev->on_read = { 0 };
+	dev->on_disconnected = { 0 };
 	dev->device_info = NULL;
 
 	return dev;
@@ -160,20 +160,15 @@ static void free_hid_device(hid_device *dev)
 }
 
 
-static on_read_callback hid_device_get_on_read(hid_device *dev)
+static on_read_callback_entry hid_device_get_on_read(hid_device *dev)
 {
 	return dev->on_read;
 }
 
-static void hid_device_set_on_read(hid_device *dev, on_read_callback on_read)
+static void hid_device_set_on_read(hid_device *dev, on_read_callback_entry on_read)
 {
-	if (on_read == hid_device_get_on_read(dev))
-	{
-		return;
-	}
-
 	dev->on_read = on_read;
-	if (on_read)
+	if (non_null(on_read))
 	{
 		g_DeviceMonitor.StartMonitoringOnReadForDevice(dev);
 	}
@@ -184,15 +179,15 @@ static void hid_device_set_on_read(hid_device *dev, on_read_callback on_read)
 	
 }
 
-static on_disconnected_callback hid_device_get_on_disconnect(hid_device *dev)
+static on_disconnected_callback_entry hid_device_get_on_disconnect(hid_device *dev)
 {
 	return dev->on_disconnected;
 }
 
-static void hid_device_set_on_disconnected(hid_device *dev, on_disconnected_callback on_disconnected)
+static void hid_device_set_on_disconnected(hid_device *dev, on_disconnected_callback_entry on_disconnected)
 {
 	dev->on_disconnected = on_disconnected;
-	if (on_disconnected)
+	if (non_null(on_disconnected))
 	{
 		g_DeviceMonitor.StartMonitoringDisconnectionForDevice(dev);
 	}
@@ -829,7 +824,7 @@ end_of_function:
 
 int HID_API_EXPORT HID_API_CALL hid_read_timeout(hid_device *dev, unsigned char *data, size_t length, int milliseconds)
 {
-	if (hid_device_get_on_read(dev)) 
+	if (non_null(hid_device_get_on_read(dev)))
 	{
 		register_string_error(dev, L"hid_device has been registered to use on_read callback to read data.");
 		return -1;
@@ -1135,7 +1130,7 @@ HID_API_EXPORT const wchar_t * HID_API_CALL  hid_error(hid_device *dev)
 }
 
 
-int HID_API_EXPORT HID_API_CALL hid_register_read_callback(hid_device *dev, void (*on_read)(hid_device *, unsigned char *, size_t))
+int HID_API_EXPORT HID_API_CALL hid_register_read_callback(hid_device *dev, on_read_callback_entry on_read)
 {
 	hid_device_set_on_read(dev, on_read);
     return 0;
@@ -1143,10 +1138,11 @@ int HID_API_EXPORT HID_API_CALL hid_register_read_callback(hid_device *dev, void
 
 void HID_API_EXPORT HID_API_CALL hid_unregister_read_callback(hid_device *dev)
 {
-	hid_device_set_on_read(dev, NULL);
+	on_read_callback_entry null_on_read = { 0 };
+	hid_device_set_on_read(dev, null_on_read);
 }
 
-int HID_API_EXPORT hid_register_disconnected_callback(hid_device *dev, void (*on_disconnected)(hid_device *))
+int HID_API_EXPORT hid_register_disconnected_callback(hid_device *dev, on_disconnected_callback_entry on_disconnected)
 {
 	hid_device_set_on_disconnected(dev, on_disconnected);
     return 0;
@@ -1154,7 +1150,8 @@ int HID_API_EXPORT hid_register_disconnected_callback(hid_device *dev, void (*on
     
 void HID_API_EXPORT hid_unregister_disconnected_callback(hid_device *dev)
 {
-	hid_device_set_on_disconnected(dev, NULL);
+	on_disconnected_callback_entry null_on_disconnect = { 0 };
+	hid_device_set_on_disconnected(dev, null_on_disconnect);
 }
 
 

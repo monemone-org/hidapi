@@ -37,6 +37,7 @@ static wchar_t const szWindowClass[] = L"HidDeviceConnectionMonitorHWND";
 UINT const WMAPP_ON_READ_DATA = WM_APP + 1;
 
 
+
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     HidDeviceConnectionMonitor* pMonitor = (HidDeviceConnectionMonitor*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
@@ -166,13 +167,13 @@ LRESULT HidDeviceConnectionMonitor::MonitorWndProc(HWND hwnd, UINT message, WPAR
             if (pReadThread)
             {
                 hid_device* dev = pReadThread->GetDev();
-                if (dev->on_read)
+                if (non_null(dev->on_read))
                 {
                     unsigned char* data = NULL;
                     size_t cbData = 0;
                     while (pReadThread->PopReadData(&data, &cbData))
                     {
-                        dev->on_read(dev, data, cbData);
+                        dev->on_read.on_read(dev, data, cbData, dev->on_read.user_data);
                         
                         free(data);
                         data = NULL;
@@ -273,9 +274,9 @@ void HidDeviceConnectionMonitor::OnDBTDeviceRemoveComplete(wchar_t* device_inter
     struct hid_device_* dev = FindMonitoringDisconnectionDeviceByDeviceInterfaceName(device_interface_name);
     if (dev)
     {
-        if (dev->on_disconnected)
+        if (non_null(dev->on_disconnected))
         {
-            dev->on_disconnected(dev);
+            dev->on_disconnected.on_disconnected(dev, dev->on_disconnected.user_data);
         }
     }
 }

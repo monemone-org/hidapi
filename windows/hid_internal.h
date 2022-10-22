@@ -35,8 +35,8 @@ struct hid_device_ {
 	struct hid_device_info* device_info;
 
 	CRITICAL_SECTION cs; //to protect the access of on_read and on_disconnected
-	on_read_callback on_read;
-	on_disconnected_callback on_disconnected;
+	on_read_callback_entry on_read;
+	on_disconnected_callback_entry on_disconnected;
 
 };
 
@@ -80,6 +80,13 @@ size_t hid_internal_dev_copy_read_buf(hid_device* dev, unsigned char* data, size
 
 // Return the description of Windows' GetLastError() 
 void register_winapi_error_to_buffer(wchar_t** error_buffer, const WCHAR* op);
+
+inline bool non_null(const on_read_callback_entry& entry) { return entry.on_read != NULL; }
+inline bool is_null(const on_read_callback_entry& entry) { return !non_null(entry); }
+
+inline bool non_null(const on_disconnected_callback_entry& entry) { return entry.on_disconnected != NULL; }
+inline bool is_null(const on_disconnected_callback_entry& entry) { return !non_null(entry); }
+
 
 #include <string>
 
