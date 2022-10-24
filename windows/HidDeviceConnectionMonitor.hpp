@@ -92,10 +92,7 @@ protected:
 public:
     //IHidDeviceAsyncReadThreadMonitor
     virtual void OnDataRead(const std::wstring& devID);
+    virtual void OnDataReadFailure(const std::wstring& devID, const std::wstring& errMsg);
 };
 
 
-
-
-void mone_set_global_error(const wchar_t* last_error_str);
-const wchar_t* mone_get_global_error();

@@ -200,6 +200,7 @@ BOOL HidDeviceAsyncReadThread::PopReadData(__out unsigned char** pData, __out si
     return TRUE;
 }
 
+
 DWORD HidDeviceAsyncReadThread::AsyncReadThreadProc()
 {
     const size_t waitObjectsCount = 2;
@@ -208,6 +209,11 @@ DWORD HidDeviceAsyncReadThread::AsyncReadThreadProc()
     HANDLE waitObjects[2] = {
         m_hReadMonitoringThreadExitEvent,
         m_dev->ol.hEvent
+    };
+
+    auto notify_read_failure = [this]() {
+
+        m_pReadThreadMonitor->OnDataReadFailure(m_devID, m_dev->last_error_str);
     };
 
     auto copy_and_notify_read_buf = [this]() -> bool 
@@ -240,13 +246,14 @@ DWORD HidDeviceAsyncReadThread::AsyncReadThreadProc()
         {
             case hid_device_read_failed:
                 SetLastError(L"hid_internal_dev_async_read_nowait failed.");
+                notify_read_failure();
                 continue;
                 break;
 
             case hid_device_read_succeeded:
                 if (!copy_and_notify_read_buf())
                 {
-                    //return -1;
+                    notify_read_failure();
                     continue;
                 }
                 break;
@@ -276,14 +283,14 @@ DWORD HidDeviceAsyncReadThread::AsyncReadThreadProc()
                 {
                     if (!copy_and_notify_read_buf())
                     {
-                        //return -1;
+                        notify_read_failure();
                         continue;
                     }
                 }
                 else
                 {
                     SetWinApiLastError(L"WaitForMultipleObjectsEx");
-                    //return -1;
+                    notify_read_failure();
                     continue;
                 }
 

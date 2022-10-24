@@ -156,6 +156,7 @@ extern "C" {
 	typedef struct on_read_callback_entry {
 		void* user_data;
 		void (*on_read)(hid_device*, unsigned char*, size_t, void* user_data);
+		void (*on_read_failure)(hid_device*, const wchar_t* pszMessage, void* user_data);
 	} on_read_callback_entry;
 
 	typedef struct on_disconnected_callback_entry {

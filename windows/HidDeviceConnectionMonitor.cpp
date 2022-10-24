@@ -35,7 +35,7 @@ static wchar_t const szWindowClass[] = L"HidDeviceConnectionMonitorHWND";
 // LPARAM: 0
 //      
 UINT const WMAPP_ON_READ_DATA = WM_APP + 1;
-
+UINT const WMAPP_ON_READ_DATA_FAILURE = WM_APP + 2;
 
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -159,30 +159,50 @@ LRESULT HidDeviceConnectionMonitor::MonitorWndProc(HWND hwnd, UINT message, WPAR
         break;
 
     case WMAPP_ON_READ_DATA:
-        {
-            WCHAR* pszDevID = (WCHAR *)wParam;
+    {
+        WCHAR* pszDevID = (WCHAR *)wParam;
             
-            HidDeviceAsyncReadThread* pReadThread = FindMonitoringAsyncReadThreadByDeviceID(pszDevID);
-            if (pReadThread)
+        HidDeviceAsyncReadThread* pReadThread = FindMonitoringAsyncReadThreadByDeviceID(pszDevID);
+        if (pReadThread)
+        {
+            hid_device* dev = pReadThread->GetDev();
+            if (non_null(dev->on_read))
             {
-                hid_device* dev = pReadThread->GetDev();
-                if (non_null(dev->on_read))
+                unsigned char* data = NULL;
+                size_t cbData = 0;
+                while (pReadThread->PopReadData(&data, &cbData))
                 {
-                    unsigned char* data = NULL;
-                    size_t cbData = 0;
-                    while (pReadThread->PopReadData(&data, &cbData))
-                    {
-                        dev->on_read.on_read(dev, data, cbData, dev->on_read.user_data);
+                    dev->on_read.on_read(dev, data, cbData, dev->on_read.user_data);
                         
-                        free(data);
-                        data = NULL;
-                    }
+                    free(data);
+                    data = NULL;
                 }
             }
-
-            free(pszDevID);
-            break;
         }
+
+        free(pszDevID);
+        break;
+    }
+
+    case WMAPP_ON_READ_DATA_FAILURE:
+    {
+        WCHAR* pszDevID = (WCHAR*)wParam;
+        WCHAR* pszMessage = (WCHAR*)lParam;
+
+        HidDeviceAsyncReadThread* pReadThread = FindMonitoringAsyncReadThreadByDeviceID(pszDevID);
+        if (pReadThread)
+        {
+            hid_device* dev = pReadThread->GetDev();
+            if (non_null(dev->on_read))
+            {
+                dev->on_read.on_read_failure(dev, pszMessage, dev->on_read.user_data);
+            }
+        }
+
+        free(pszDevID);
+        free(pszMessage);
+        break;
+    }
 
     case WM_DEVICECHANGE:
     {
@@ -436,4 +456,11 @@ void HidDeviceConnectionMonitor::OnDataRead(const std::wstring& devID)
     PostMessage(m_hwnd, WMAPP_ON_READ_DATA, (WPARAM)pszDevID, 0);
 }
 
+
+void HidDeviceConnectionMonitor::OnDataReadFailure(const std::wstring& devID, const std::wstring& errMsg)
+{
+    WCHAR* pszDevID = _wcsdup(devID.c_str());
+    WCHAR* pszMessage = _wcsdup(errMsg.c_str());
+    PostMessage(m_hwnd, WMAPP_ON_READ_DATA_FAILURE, (WPARAM)pszDevID, (LPARAM)pszMessage);
+}
 

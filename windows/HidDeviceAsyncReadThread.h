@@ -30,6 +30,7 @@ class IHidDeviceAsyncReadThreadMonitor
 {
 public:
     virtual void OnDataRead(const std::wstring& devID) = 0;
+    virtual void OnDataReadFailure(const std::wstring& devID, const std::wstring& errMsg) = 0;
 };
 
 class HidDeviceAsyncReadThread
