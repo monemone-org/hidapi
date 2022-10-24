@@ -3,6 +3,8 @@
 #include "HidDeviceConnectionMonitor.hpp"
 #include "hid_internal.h"
 #include "HidDeviceAsyncReadThread.h"
+#include "HidD_proxy.h"
+
 
 #ifdef __MINGW32__
 #include <ntdef.h>
@@ -21,7 +23,7 @@
 #include <WinUser.h>
 #include <dbt.h>
 #include <usbiodef.h>
-#include <hidsdi.h>
+//#include <hidsdi.h>
 
 #include <list>
 #include <vector>
@@ -110,11 +112,14 @@ BOOL HidDeviceConnectionMonitor::Initialize()
     }
     SetWindowLongPtr(m_hwnd, GWLP_USERDATA, (LONG_PTR)this);
 
+    GUID interface_class_guid;
+    HidD_GetHidGuid(&interface_class_guid);
+
     DEV_BROADCAST_DEVICEINTERFACE NotificationFilter;
     ZeroMemory(&NotificationFilter, sizeof(NotificationFilter));
     NotificationFilter.dbcc_size = sizeof(DEV_BROADCAST_DEVICEINTERFACE);
     NotificationFilter.dbcc_devicetype = DBT_DEVTYP_DEVICEINTERFACE;
-    NotificationFilter.dbcc_classguid = GUID_DEVINTERFACE_USB_DEVICE;
+    NotificationFilter.dbcc_classguid = interface_class_guid;
     m_hDeviceNotify = RegisterDeviceNotificationW(
         m_hwnd,                       // events recipient
         &NotificationFilter,        // type of device
