@@ -113,14 +113,14 @@ hid_device_read_ret hid_internal_dev_async_read_nowait(hid_device* dev)
 {
 	hid_device_read_ret ret = hid_device_read_succeeded;
 
-	if (!dev->read_pending)  //already waiting for data
+	if (!dev->read_pending)  //if not already waiting for data
 	{
 		/* Start an Overlapped I/O read. */
 		memset(dev->read_buf, 0, dev->input_report_length);
 		dev->read_buf_bytes_read = 0;
 		ResetEvent(dev->ol.hEvent);
 
-		BOOL res = ReadFile(dev->device_handle, dev->read_buf, (DWORD)dev->input_report_length, &dev->read_buf_bytes_read, &dev->ol);
+		BOOL res = ReadFile(dev->device_handle, dev->read_buf, (DWORD)dev->input_report_length, NULL,  &dev->ol);
 		if (!res)
 		{
 			if (GetLastError() == ERROR_IO_PENDING)
@@ -213,10 +213,10 @@ BOOL hid_internal_dev_async_read_pending_data(hid_device* dev)
 	}
 
 	/* Set pending back to false, even if GetOverlappedResult() returned error. */
+	dev->read_buf_bytes_read = bytes_read;
 	dev->read_pending = FALSE;
 	return TRUE;
 }
-
 
 /*
 * Caller needs to free() the returned error_buffer.

@@ -212,6 +212,11 @@ DWORD HidDeviceAsyncReadThread::AsyncReadThreadProc()
 
     auto copy_and_notify_read_buf = [this]() -> bool 
     {
+        if (!hid_internal_dev_async_read_pending_data(m_dev))
+        {
+            return false;
+        }
+       
         size_t cbData = m_dev->input_report_length;
         unsigned char* data = (unsigned char*)calloc(cbData, 1);
         if (data == NULL)
@@ -235,13 +240,14 @@ DWORD HidDeviceAsyncReadThread::AsyncReadThreadProc()
         {
             case hid_device_read_failed:
                 SetLastError(L"hid_internal_dev_async_read_nowait failed.");
-                return -1;
+                continue;
                 break;
 
             case hid_device_read_succeeded:
                 if (!copy_and_notify_read_buf())
                 {
-                    return -1;
+                    //return -1;
+                    continue;
                 }
                 break;
 
@@ -270,13 +276,15 @@ DWORD HidDeviceAsyncReadThread::AsyncReadThreadProc()
                 {
                     if (!copy_and_notify_read_buf())
                     {
-                        return -1;
+                        //return -1;
+                        continue;
                     }
                 }
                 else
                 {
                     SetWinApiLastError(L"WaitForMultipleObjectsEx");
-                    return -1;
+                    //return -1;
+                    continue;
                 }
 
                 break;
